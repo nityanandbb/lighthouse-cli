@@ -77,7 +77,8 @@ jobs:
         echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
         echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
         
-        # Store each URL in an individual environment variable
+        # Export each URL separately, removing extra quotes and commas
+        
         IFS=$'\n' read -r -a urls_array <<< "$urls"
         for url in "${urls_array[@]}"; do
           echo "URL=$url" >> $GITHUB_ENV
@@ -87,6 +88,7 @@ jobs:
     - name: Execute Lighthouse Tests
       run: |
         echo -e "🚀 Starting Lighthouse tests..."
+        echo "URLS=$urls" >> $GITHUB_ENV
         node executeGithub.js
         echo -e "✅ Lighthouse tests completed."
 
@@ -118,7 +120,7 @@ jobs:
         cp -r ./results/* ./lighthouse-results/
         echo -e "✅ All Lighthouse result files archived in 'lighthouse-results/'."
 
-    # Step 8: Upload Reports as Artifacts (Optional)
+    # Step 8: Upload Reports as Artifacts (Optional).
     - name: Upload Reports as Artifacts 
       uses: actions/upload-artifact@v3 
       with:
