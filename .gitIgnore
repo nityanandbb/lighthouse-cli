@@ -9,6 +9,7 @@ yarn.lock
 # Lighthouse CLI Reports
 lighthouse-report*.html
 lighthouse-results.json
+.lighthouseci/
 
 # Python-related files
 __pycache__/
