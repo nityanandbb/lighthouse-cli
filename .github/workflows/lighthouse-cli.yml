@@ -57,7 +57,7 @@ jobs:
           exit 1
         fi
 
-        # Split URLs and sanitize by trimming spaces, quotes, and parentheses
+        # Split URLs and sanitize by trimming spaces and quotes
         urls=$(echo "${{ github.event.inputs.urls }}" | tr ',' '\n' | sed 's/^ *//g; s/ *$//g; s/^["\(]*//g; s/["\)]*$//g')
         
         # Validate URL format
@@ -77,14 +77,16 @@ jobs:
         echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
         echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
         
-        # Store the URLs in an array for further use
-        echo "URLs=${urls}" >> $GITHUB_ENV
+        # Store each URL in an individual environment variable
+        IFS=$'\n' read -r -a urls_array <<< "$urls"
+        for url in "${urls_array[@]}"; do
+          echo "URL=$url" >> $GITHUB_ENV
+        done
 
     # Step 5: Start Lighthouse Execution
     - name: Execute Lighthouse Tests
       run: |
         echo -e "🚀 Starting Lighthouse tests..."
-        echo -e "URLs=${{ env.URLS }}"  # This will print the sanitized URLs
         node executeGithub.js
         echo -e "✅ Lighthouse tests completed."
 
