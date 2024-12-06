@@ -57,8 +57,8 @@ jobs:
           exit 1
         fi
 
-        # Split URLs and trim spaces
-        urls=$(echo "${{ github.event.inputs.urls }}" | tr ',' '\n' | sed 's/^ *//g; s/ *$//g')
+        # Split URLs and sanitize by trimming spaces and quotes
+        urls=$(echo "${{ github.event.inputs.urls }}" | tr ',' '\n' | sed 's/^ *//g; s/ *$//g; s/^["\(]*//g; s/["\)]*$//g')
         
         # Validate URL format
         for url in $urls; do
@@ -78,7 +78,7 @@ jobs:
         echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
         
         # Export each URL separately, removing extra quotes and commas
-        IFS=',' read -r -a urls_array <<< "${{ github.event.inputs.urls }}"
+        IFS=$'\n' read -r -a urls_array <<< "$urls"
         for url in "${urls_array[@]}"; do
           echo "URL=$url" >> $GITHUB_ENV
         done
