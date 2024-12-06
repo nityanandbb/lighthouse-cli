@@ -81,8 +81,8 @@ jobs:
         IFS=$'\n' read -r -a urls_array <<< "$urls"
         for url in "${urls_array[@]}"; do
           echo "URL=$url" >> $GITHUB_ENV
+          echo "Logging URL: $url"
         done
-        
 
     # Step 5: Start Lighthouse Execution
     - name: Execute Lighthouse Tests
