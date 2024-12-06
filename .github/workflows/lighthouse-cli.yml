@@ -82,11 +82,13 @@ jobs:
         for url in "${urls_array[@]}"; do
           echo "URL=$url" >> $GITHUB_ENV
         done
+        
 
     # Step 5: Start Lighthouse Execution
     - name: Execute Lighthouse Tests
       run: |
         echo -e "🚀 Starting Lighthouse tests..."
+        echo "URLS=$urls" >> $GITHUB_ENV
         node executeGithub.js
         echo -e "✅ Lighthouse tests completed."
 
