@@ -76,7 +76,12 @@ jobs:
         echo "PROJECT_MANAGER=${{ github.event.inputs.projectManager }}" >> $GITHUB_ENV
         echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
         echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
-        echo "URLS=\"$urls\"" >> $GITHUB_ENV
+        
+        # Export each URL separately, removing extra quotes and commas
+        IFS=',' read -r -a urls_array <<< "${{ github.event.inputs.urls }}"
+        for url in "${urls_array[@]}"; do
+          echo "URL=$url" >> $GITHUB_ENV
+        done
 
     # Step 5: Start Lighthouse Execution
     - name: Execute Lighthouse Tests
