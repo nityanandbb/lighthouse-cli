@@ -61,14 +61,18 @@ jobs:
         urls=$(echo "${{ github.event.inputs.urls }}" | tr ',' '\n' | sed 's/^ *//g; s/ *$//g; s/^["\(]*//g; s/["\)]*$//g')
         
         # Validate URL format
+        valid_urls=()
         for url in $urls; do
           if [[ ! $url =~ ^https?:// ]]; then
             echo -e "❌ Invalid URL format: $url. URLs must start with 'http://' or 'https://'."
             exit 1
+          else
+            echo -e "✅ Valid URL: $url"
+            valid_urls+=("$url")
           fi
         done
 
-        echo -e "✅ URLs validated successfully."
+        echo -e "✅ All URLs validated successfully."
 
         # Export environment variables for use in scripts
         echo "PROJECT_NAME=${{ github.event.inputs.projectName }}" >> $GITHUB_ENV
@@ -77,18 +81,24 @@ jobs:
         echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
         echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
         
-        # Export each URL separately, removing extra quotes and commas
-        IFS=$'\n' read -r -a urls_array <<< "$urls"
-        for url in "${urls_array[@]}"; do
-          echo "URL=$url" >> $GITHUB_ENV
-          echo "Logging URL: $url"
-        done
+        # Export URLs as a list
+        echo "TESTFILES_LIST=${valid_urls[*]}" >> $GITHUB_ENV
 
     # Step 5: Start Lighthouse Execution
     - name: Execute Lighthouse Tests
       run: |
         echo -e "🚀 Starting Lighthouse tests..."
-        echo "URLS=$urls" >> $GITHUB_ENV
+
+        # Convert test URLs list into an array
+        IFS=' ' read -r -a testList <<< "$TESTFILES_LIST"
+        
+        # Log each URL being processed
+        echo -e "🔍 URLs to be tested:"
+        for test in "${testList[@]}"; do
+          echo -e "  - $test"
+        done
+        
+        # Pass URLs to the Node.js script
         node executeGithub.js
         echo -e "✅ Lighthouse tests completed."
 
@@ -120,9 +130,9 @@ jobs:
         cp -r ./results/* ./lighthouse-results/
         echo -e "✅ All Lighthouse result files archived in 'lighthouse-results/'."
 
-    # Step 8: Upload Reports as Artifacts (Optional).
-    - name: Upload Reports as Artifacts 
-      uses: actions/upload-artifact@v3 
+    # Step 8: Upload Reports as Artifacts (Optional)
+    - name: Upload Reports as Artifacts
+      uses: actions/upload-artifact@v3
       with:
         name: lighthouse-reports
         path: ./lighthouse-results
