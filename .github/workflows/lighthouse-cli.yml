@@ -1,0 +1,118 @@
+name: Lighthouse CLI Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      projectName:
+        description: "Project Name"
+        required: false
+        default: "Internal"
+      client:
+        description: "Client Name"
+        required: false
+        default: "Internal"
+      projectManager:
+        description: "Project Manager"
+        required: false
+        default: "Kunal"
+      qaManager:
+        description: "QA Manager"
+        required: false
+        default: "Archana"
+      expectedLoadTime:
+        description: "Expected Load Time (e.g., '3 seconds')"
+        required: false
+        default: "3 seconds"
+      urls:
+        description: "Comma-separated list of URLs (e.g., 'url1.com,url2.com')"
+        required: true
+
+jobs:
+  setup-and-execute:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout repository
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    # Step 2: Setup Node.js
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: "^18.3 || ^20.18.1"
+
+    # Step 3: Install Dependencies
+    - name: Install Lighthouse CLI
+      run: npm install
+
+    # Step 4: Validate Inputs and Prepare Environment
+    - name: Validate Inputs
+      run: |
+        echo -e "🟢 Validating inputs..."
+        
+        # Validate and sanitize URLs
+        if [ -z "${{ github.event.inputs.urls }}" ]; then
+          echo -e "❌ No URLs provided. Please provide valid URLs to proceed."
+          exit 1
+        fi
+
+        urls=$(echo "${{ github.event.inputs.urls }}" | tr ',' '\n' | sed 's/^ *//g; s/ *$//g')
+        for url in $urls; do
+          if [[ ! $url =~ ^https?:// ]]; then
+            echo -e "❌ Invalid URL format: $url. URLs must start with 'http://' or 'https://'."
+            exit 1
+          fi
+        done
+
+        echo -e "✅ URLs validated successfully."
+
+        # Export environment variables for use in scripts
+        echo "PROJECT_NAME=${{ github.event.inputs.projectName }}" >> $GITHUB_ENV
+        echo "CLIENT=${{ github.event.inputs.client }}" >> $GITHUB_ENV
+        echo "PROJECT_MANAGER=${{ github.event.inputs.projectManager }}" >> $GITHUB_ENV
+        echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
+        echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
+        echo "URLS=$urls" >> $GITHUB_ENV
+
+    # Step 5: Start Lighthouse Execution
+    - name: Execute Lighthouse Tests
+      run: |
+        echo -e "🚀 Starting Lighthouse tests..."
+        node executeGithub.js
+        echo -e "✅ Lighthouse tests completed."
+
+    # Step 6: Wait for Report Generation (Adding Delay)
+    - name: Wait for Reports to be generated
+      run: |
+        echo -e "⏳ Waiting for 20 seconds to ensure reports are generated..."
+        sleep 20
+
+    # Step 7: Export Reports
+    - name: Export Reports
+      run: |
+        echo -e "📄 Exporting reports..."
+        
+        # Generate dynamic report names based on the run ID
+        REPORT_HTML="lighthouse-report-${{ github.run_id }}.html"
+        REPORT_CSV="lighthouse-report-${{ github.run_id }}.csv"
+        
+        # Export HTML Report
+        mv ./*.html ./$REPORT_HTML
+        echo -e "✅ HTML report saved as '$REPORT_HTML'."
+        
+        # Export CSV Report
+        mv ./results/*.csv ./$REPORT_CSV
+        echo -e "✅ CSV report saved as '$REPORT_CSV'."
+
+        # Archive Lighthouse Results
+        mkdir -p ./lighthouse-results
+        cp -r ./results/* ./lighthouse-results/
+        echo -e "✅ All Lighthouse result files archived in 'lighthouse-results/'."
+
+    # Step 8: Upload Reports as Artifacts (Optional)
+    - name: Upload Reports as Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: lighthouse-reports
+        path: ./lighthouse-results
