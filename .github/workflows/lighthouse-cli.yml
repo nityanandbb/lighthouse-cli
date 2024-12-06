@@ -57,7 +57,10 @@ jobs:
           exit 1
         fi
 
+        # Split URLs and trim spaces
         urls=$(echo "${{ github.event.inputs.urls }}" | tr ',' '\n' | sed 's/^ *//g; s/ *$//g')
+        
+        # Validate URL format
         for url in $urls; do
           if [[ ! $url =~ ^https?:// ]]; then
             echo -e "❌ Invalid URL format: $url. URLs must start with 'http://' or 'https://'."
@@ -73,7 +76,7 @@ jobs:
         echo "PROJECT_MANAGER=${{ github.event.inputs.projectManager }}" >> $GITHUB_ENV
         echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
         echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
-        echo "URLS=$urls" >> $GITHUB_ENV
+        echo "URLS=\"$urls\"" >> $GITHUB_ENV
 
     # Step 5: Start Lighthouse Execution
     - name: Execute Lighthouse Tests
