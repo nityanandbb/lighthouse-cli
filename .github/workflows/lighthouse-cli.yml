@@ -57,8 +57,8 @@ jobs:
           exit 1
         fi
 
-        # Split URLs and trim spaces
-        urls=$(echo "${{ github.event.inputs.urls }}" | tr ',' '\n' | sed 's/^ *//g; s/ *$//g')
+        # Split URLs and sanitize by trimming spaces, quotes, and parentheses
+        urls=$(echo "${{ github.event.inputs.urls }}" | tr ',' '\n' | sed 's/^ *//g; s/ *$//g; s/^["\(]*//g; s/["\)]*$//g')
         
         # Validate URL format
         for url in $urls; do
@@ -76,12 +76,19 @@ jobs:
         echo "PROJECT_MANAGER=${{ github.event.inputs.projectManager }}" >> $GITHUB_ENV
         echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
         echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
-        echo "URLS=\"$urls\"" >> $GITHUB_ENV
+        
+        # Export each URL separately
+        IFS=$'\n' read -r -a urls_array <<< "$urls"
+        for url in "${urls_array[@]}"; do
+          echo "URL=$url" >> $GITHUB_ENV
+        done
+        
 
     # Step 5: Start Lighthouse Execution
     - name: Execute Lighthouse Tests
       run: |
         echo -e "🚀 Starting Lighthouse tests..."
+        echo -e "URLS=$urls" >> $GITHUB_ENV
         node executeGithub.js
         echo -e "✅ Lighthouse tests completed."
 
@@ -114,8 +121,8 @@ jobs:
         echo -e "✅ All Lighthouse result files archived in 'lighthouse-results/'."
 
     # Step 8: Upload Reports as Artifacts (Optional)
-    - name: Upload Reports as Artifacts
-      uses: actions/upload-artifact@v3
+    - name: Upload Reports as Artifacts 
+      uses: actions/upload-artifact@v3 
       with:
         name: lighthouse-reports
         path: ./lighthouse-results
