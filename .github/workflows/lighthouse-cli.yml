@@ -77,18 +77,14 @@ jobs:
         echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
         echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
         
-        # Export each URL separately
-        IFS=$'\n' read -r -a urls_array <<< "$urls"
-        for url in "${urls_array[@]}"; do
-          echo "URL=$url" >> $GITHUB_ENV
-        done
-        
+        # Store the URLs in an array for further use
+        echo "URLs=${urls}" >> $GITHUB_ENV
 
     # Step 5: Start Lighthouse Execution
     - name: Execute Lighthouse Tests
       run: |
         echo -e "🚀 Starting Lighthouse tests..."
-        echo -e "URLS=$urls" >> $GITHUB_ENV
+        echo -e "URLs=${{ env.URLS }}"  # This will print the sanitized URLs
         node executeGithub.js
         echo -e "✅ Lighthouse tests completed."
 
@@ -126,5 +122,3 @@ jobs:
       with:
         name: lighthouse-reports
         path: ./lighthouse-results
-
-        
