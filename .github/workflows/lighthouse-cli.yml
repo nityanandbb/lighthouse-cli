@@ -119,7 +119,7 @@ jobs:
         echo -e "✅ All Lighthouse result files archived in 'lighthouse-results/'."
 
     # Step 8: Upload Reports as Artifacts (Optional)
-    - name: Upload Reports as Artifacts
+    - name: Upload Reports as Artifacts 
       uses: actions/upload-artifact@v3
       with:
         name: lighthouse-reports
