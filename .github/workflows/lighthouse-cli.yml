@@ -137,8 +137,8 @@ jobs:
       with:
         name: lighthouse-csv-html-reports
         path: |
-          ${{ github.workspace }}/$REPORT_CSV
-          ${{ github.workspace }}/$REPORT_HTML
+          ${{ github.workspace }}/${{ env.REPORT_CSV }}
+          ${{ github.workspace }}/${{ env.REPORT_HTML }}
 
     # Step 9: Upload Archived Lighthouse Results as Artifacts
     - name: Upload Archived Lighthouse Results as Artifacts
