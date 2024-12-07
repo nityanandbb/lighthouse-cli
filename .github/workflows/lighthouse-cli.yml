@@ -121,10 +121,9 @@ jobs:
         mv ./*.html ./$REPORT_HTML
         echo -e "✅ HTML report saved as '$REPORT_HTML'."
         
-        # Export CSV Report 
+        # Debug: List files in the current directory (to help troubleshoot line 31)
         ls -l
-        mv ./results/*.csv ../$REPORT_CSV
-        ls -l
+        mv ./results/*.csv ./$REPORT_CSV
         echo -e "✅ CSV report saved as '$REPORT_CSV'."
 
         # Archive Lighthouse Results
@@ -132,18 +131,18 @@ jobs:
         cp -r ./.lighthouseci/* ./lighthouse-results/
         echo -e "✅ All Lighthouse result files archived in 'lighthouse-results/'."
     
-     # Step 9: Upload Reports as Artifacts
-     - name: Upload CSV and HTML Reports as Artifacts
-       uses: actions/upload-artifact@v3
-       with:
-        name: lighthouse-reports QA
+    # Step 8: Upload CSV and HTML Reports as Artifacts
+    - name: Upload CSV and HTML Reports as Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: lighthouse-csv-html-reports
         path: |
           ${{ github.workspace }}/$REPORT_CSV
           ${{ github.workspace }}/$REPORT_HTML
 
-    # Step 9: Upload Reports as Artifacts (Optional)
-    - name: Upload Reports as Artifacts
+    # Step 9: Upload Archived Lighthouse Results as Artifacts
+    - name: Upload Archived Lighthouse Results as Artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: lighthouse-reports
+        name: lighthouse-full-results
         path: ./lighthouse-results
