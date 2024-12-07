@@ -125,7 +125,7 @@ jobs:
         ls -l
         cd results
         ls -l
-        mv ./results/*.csv ./$REPORT_CSV
+        mv ./*.csv ../$REPORT_CSV
         echo -e "✅ CSV report saved as '$REPORT_CSV'."
 
         # Archive Lighthouse Results
