@@ -108,50 +108,33 @@ jobs:
         echo -e "⏳ Waiting for 20 seconds to ensure reports are generated..."
         sleep 20
 
-    # Step 7: Export Reports
-    - name: Export Reports
+    # Step 7: Export and Move Reports to Reports_QA Folder
+    - name: Export and Move Reports
       run: |
-        echo -e "📄 Exporting reports..."
-        
-        # Generate dynamic report names based on the run ID
-        REPORT_HTML="lighthouse-report-${{ github.run_id }}.html"
-        REPORT_CSV="lighthouse-report-${{ github.run_id }}.csv"
-        
-        # Export HTML Report
-        mv ./*.html ./$REPORT_HTML
-        echo -e "✅ HTML report saved as '$REPORT_HTML'."
-        
-        # Debug: List files in the current directory (to help troubleshoot line 31)
-        ls -l
-        mv ./results/*.csv ./$REPORT_CSV
-        echo -e "✅ CSV report saved as '$REPORT_CSV'."
+        echo -e "📂 Exporting and moving reports to 'Reports_QA' folder..."
 
-        # Archive Lighthouse Results
-        mkdir -p ./lighthouse-results
-        cp -r ./.lighthouseci/* ./lighthouse-results/
-        echo -e "✅ All Lighthouse result files archived in 'lighthouse-results/'."
-    
-    # Step 8: Move Reports to Reports_QA Folder
-    - name: Move Reports to Reports_QA Folder
-      run: |
-        echo -e "📂 Moving reports to 'Reports_QA' folder..."
-        
         # Create Reports_QA folder if not exists
         mkdir -p ./Reports_QA
-        
-        # Move the reports
-        mv ./${REPORT_CSV} ./Reports_QA/
-        mv ./${REPORT_HTML} ./Reports_QA/
-        echo -e "✅ Reports moved to 'Reports_QA'."
-        
-    # Step 9: Upload Reports from Reports_QA Folder as Artifacts
+
+        # Move HTML reports to Reports_QA folder
+        mv *.html ./Reports_QA/
+        echo -e "✅ HTML report saved and moved to 'Reports_QA'."
+
+        # Debug: List files in the current directory (to help troubleshoot)
+        ls -l
+
+        # Move CSV reports from results to Reports_QA folder
+        mv ./results/*.csv ./Reports_QA/
+        echo -e "✅ CSV report saved and moved to 'Reports_QA'."
+
+    # Step 8: Upload CSV and HTML Reports as Artifacts
     - name: Upload CSV and HTML Reports as Artifacts
       uses: actions/upload-artifact@v3
       with:
         name: lighthouse-csv-html-reports
-        path: ./Reports_QA/
+        path: ./Reports_QA/*
 
-    # Step 10: Upload Archived Lighthouse Results as Artifacts
+    # Step 9: Upload Archived Lighthouse Results as Artifacts
     - name: Upload Archived Lighthouse Results as Artifacts
       uses: actions/upload-artifact@v3
       with:
