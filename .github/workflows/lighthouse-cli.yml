@@ -121,7 +121,8 @@ jobs:
         mv ./*.html ./$REPORT_HTML
         echo -e "✅ HTML report saved as '$REPORT_HTML'."
         
-        # Export CSV Report
+        # Export CSV Report 
+        ls -l
         mv ./results/*.csv ./$REPORT_CSV
         echo -e "✅ CSV report saved as '$REPORT_CSV'."
 
