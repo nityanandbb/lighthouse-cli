@@ -131,16 +131,27 @@ jobs:
         cp -r ./.lighthouseci/* ./lighthouse-results/
         echo -e "✅ All Lighthouse result files archived in 'lighthouse-results/'."
     
-    # Step 8: Upload CSV and HTML Reports as Artifacts
+    # Step 8: Move Reports to Reports_QA Folder
+    - name: Move Reports to Reports_QA Folder
+      run: |
+        echo -e "📂 Moving reports to 'Reports_QA' folder..."
+        
+        # Create Reports_QA folder if not exists
+        mkdir -p ./Reports_QA
+        
+        # Move the reports
+        mv ./${REPORT_CSV} ./Reports_QA/
+        mv ./${REPORT_HTML} ./Reports_QA/
+        echo -e "✅ Reports moved to 'Reports_QA'."
+        
+    # Step 9: Upload Reports from Reports_QA Folder as Artifacts
     - name: Upload CSV and HTML Reports as Artifacts
       uses: actions/upload-artifact@v3
       with:
         name: lighthouse-csv-html-reports
-        path: |
-          ${{ github.workspace }}/${{ env.REPORT_CSV }}
-          ${{ github.workspace }}/${{ env.REPORT_HTML }}
+        path: ./Reports_QA/
 
-    # Step 9: Upload Archived Lighthouse Results as Artifacts
+    # Step 10: Upload Archived Lighthouse Results as Artifacts
     - name: Upload Archived Lighthouse Results as Artifacts
       uses: actions/upload-artifact@v3
       with:
