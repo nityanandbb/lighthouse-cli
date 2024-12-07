@@ -131,8 +131,17 @@ jobs:
         mkdir -p ./lighthouse-results
         cp -r ./.lighthouseci/* ./lighthouse-results/
         echo -e "✅ All Lighthouse result files archived in 'lighthouse-results/'."
+    
+     # Step 9: Upload Reports as Artifacts
+     - name: Upload CSV and HTML Reports as Artifacts
+       uses: actions/upload-artifact@v3
+       with:
+        name: lighthouse-reports QA
+        path: |
+          ${{ github.workspace }}/$REPORT_CSV
+          ${{ github.workspace }}/$REPORT_HTML
 
-    # Step 8: Upload Reports as Artifacts (Optional)
+    # Step 9: Upload Reports as Artifacts (Optional)
     - name: Upload Reports as Artifacts
       uses: actions/upload-artifact@v3
       with:
