@@ -139,4 +139,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: lighthouse-full-results
-        path: ./lighthouse-results
+        path: ./.lighthouseci/*
