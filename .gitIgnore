@@ -61,3 +61,6 @@ test-results/
 # Miscellaneous
 logs/
 *.log
+
+# Configs lighthouse-cli/githubconfigsFile.json
+githubconfigsFile.json
