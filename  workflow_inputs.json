@@ -1,0 +1,10 @@
+{
+  "inputs": {
+  "projectName": "Simulated Project",
+  "client": "Simulated Client",
+  "projectManager": "Simulated Manager",
+  "qaManager": "Simulated QA",
+  "expectedLoadTime": "2 seconds",
+  "urls": "https://nventdev.prod.acquia-sites.com/en-us/ https://nventdev.prod.acquia-sites.com/en-us/schroff https://nventdev.prod.acquia-sites.com/en-us/hoffman"
+}
+}
