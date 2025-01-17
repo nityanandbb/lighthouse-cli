@@ -13,11 +13,17 @@ const getConfigData = () => {
 
 // Function to read GitHub inputs (from the environment or GitHub Actions context)
 const getGithubInputs = () => {
-  const inputs = process.env.GITHUB_INPUTS
-    ? JSON.parse(process.env.GITHUB_INPUTS)
-    : {};
-  return inputs;
+  try {
+    const inputs = process.env.GITHUB_INPUTS
+      ? JSON.parse(process.env.GITHUB_INPUTS)
+      : {};
+    return inputs;
+  } catch (error) {
+    console.error("Error parsing GITHUB_INPUTS:", error);
+    return {};
+  }
 };
+
 
 // Function to determine the final config to use (GitHub inputs or fallback to config.json)
 const getFinalConfig = () => {
@@ -34,6 +40,7 @@ const getFinalConfig = () => {
 // Function to save the final config to githubconfigsFile.json
 const saveConfigToFile = (configData) => {
   try {
+    //Test
     fs.writeFileSync(
       "githubconfigsFile.json",
       JSON.stringify(configData, null, 2),

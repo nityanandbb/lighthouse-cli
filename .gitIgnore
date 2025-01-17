@@ -64,3 +64,5 @@ logs/
 
 # Configs lighthouse-cli/githubconfigsFile.json
 githubconfigsFile.json
+workflow_inputs.json 
+##
