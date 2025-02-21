@@ -34,11 +34,11 @@ jobs:
     steps:
     # Step 1: Checkout repository
     - name: Checkout Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     # Step 2: Setup Node.js
     - name: Setup Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: "^18.3 || ^20.18.1"
 
@@ -129,14 +129,14 @@ jobs:
 
     # Step 8: Upload CSV and HTML Reports as Artifacts
     - name: Upload CSV and HTML Reports as Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: lighthouse-csv-html-reports
         path: ./Reports_QA/*
 
     # Step 9: Upload Archived Lighthouse Results as Artifacts
     - name: Upload Archived Lighthouse Results as Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: lighthouse-full-results
         path: ./.lighthouseci/*
