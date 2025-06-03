@@ -1,3 +1,4 @@
+// Revert ignore after ref.
 const fs = require("fs");
 const { execSync } = require("child_process");
 // Function to read the summary data from lhci-summary.json file
@@ -21,14 +22,11 @@ const runProcessConfig = () => {
   }
 };
 
-// F
-
 // Function to read the project configuration from githubconfigsFile.json
 const getConfigData = () => {
   const data = fs.readFileSync("githubconfigsFile.json", "utf8");
   return JSON.parse(data);
 };
-
 
 // Function to generate HTML report with dynamic filename (date + time)
 const generateFinalHTMLReport = (summaryData, configData) => {
@@ -131,13 +129,12 @@ const generateFinalHTMLReport = (summaryData, configData) => {
             <thead>
               <tr>
                 <th>URL</th>
-                <th>Performance</th>
+                
                 <th class="average-column">Average Performance</th>
-                <th>SEO</th>
+          
                 <th class="average-column">Average SEO</th>
                 <th>Accessibility</th>
-                <th>Desktop</th>
-                <th>Mobile</th>
+                <th>Desktop Or Mobile</th>
                 <th>Largest Contentful Paint</th>
                 <th>First Contentful Paint</th>
                 <th>Total Blocking Time</th>
@@ -199,19 +196,12 @@ const generateFinalHTMLReport = (summaryData, configData) => {
       htmlContent += `
         <tr class="desktop highlight average-row">
           <td>${entry.url}</td>
-          <td class="pass" style="color: ${performanceColor};">${getPercentage(
-        entry.categories.performance
-      )}</td>
           <td class="average-column">${getPercentage(desktopAverage)}</td>
-          <td class="pass" style="color: ${seoColor};">${getPercentage(
-        entry.categories.seo
-      )}</td>
           <td class="average-column">${getPercentage(desktopSEO)}</td>
           <td class="pass" style="color: ${performanceColor};">${getPercentage(
         entry.categories.accessibility
       )}</td>
-          <td>${entry.runType === "desktop" ? "✔️" : "❌"}</td>
-          <td>${entry.runType === "mobile" ? "✔️" : "❌"}</td>
+          <td>${entry.runType === "desktop" ? "Desktop ✔️" : ""}</td>
           <td>${entry.audits.largestContentfulPaint}</td>
           <td>${entry.audits.firstContentfulPaint}</td>
           <td>${entry.audits.totalBlockingTime}</td>
@@ -228,19 +218,12 @@ const generateFinalHTMLReport = (summaryData, configData) => {
       htmlContent += `
         <tr class="mobile highlight average-row">
           <td>${entry.url}</td>
-          <td class="pass" style="color: ${performanceColor};">${getPercentage(
-        entry.categories.performance
-      )}</td>
           <td class="average-column">${getPercentage(mobileAverage)}</td>
-          <td class="pass" style="color: ${seoColor};">${getPercentage(
-        entry.categories.seo
-      )}</td>
           <td class="average-column">${getPercentage(mobileSEO)}</td>
           <td class="pass" style="color: ${performanceColor};">${getPercentage(
         entry.categories.accessibility
       )}</td>
-          <td>${entry.runType === "desktop" ? "✔️" : "❌"}</td>
-          <td>${entry.runType === "mobile" ? "✔️" : "❌"}</td>
+          <td>${entry.runType === "mobile" ? " Mobile ✔️" : ""}</td>
           <td>${entry.audits.largestContentfulPaint}</td>
           <td>${entry.audits.firstContentfulPaint}</td>
           <td>${entry.audits.totalBlockingTime}</td>
@@ -268,4 +251,3 @@ runProcessConfig();
 const summaryData = getSummaryData();
 const configData = getConfigData();
 generateFinalHTMLReport(summaryData, configData);
- 
