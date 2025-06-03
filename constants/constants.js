@@ -1,0 +1,1 @@
+export  const QED42_LOGO = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD…AiIgIiICIiAiIgIiICIiAiIgIiICIiAiIgIiICIiAiIg//9k=";
