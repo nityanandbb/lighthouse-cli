@@ -72,3 +72,4 @@ workflow_inputs.json
 metrics_*.json
 lighthouse-analysis-data.json
 lhci-summary.json
+# reports
