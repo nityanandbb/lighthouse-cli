@@ -46,8 +46,8 @@ jobs:
     - name: Install Lighthouse CLI
       run: npm install
 
-    # Step 4: Validate Inputs and Prepare Environment
-    - name: Validate Inputs
+    # Step 4: Validate Inputs and Prepare Environment 
+    - name: Validate Inputs here
       run: |
         echo -e "🟢 Validating inputs..."
         
@@ -72,31 +72,31 @@ jobs:
           fi
         done
 
-        echo -e "✅ All URLs validated successfully."
+        echo -e "✅ All URLs validated successfully. 🏃🏼‍♂️🏃🏼‍♂️🏃🏼‍♂️🏃🏼‍♂️"
 
-        # Export individual GitHub inputs as environment variables
+        # 🏃🏼‍♂️Export individual GitHub inputs as environment variables 🏃🏼‍♂️
 
-        # Log inputs with emojis
-        echo -e "📦 PROJECT_NAME: ${{ github.event.inputs.projectName }}"
-        echo -e "👤 CLIENT: ${{ github.event.inputs.client }}"
-        echo -e "🧑‍💼 PROJECT_MANAGER: ${{ github.event.inputs.projectManager }}"
-        echo -e "🧪 QA_MANAGER: ${{ github.event.inputs.qaManager }}"
-        echo -e "⏱️ EXPECTED_LOAD_TIME: ${{ github.event.inputs.expectedLoadTime }}"
-        echo -e "🔗 TESTFILES_LIST: ${valid_urls[*]}"
+        # Log inputs with emojis 
+        echo -e "📦 PROJECT_NAME : ${{ github.event.inputs.projectName }}"
+        echo -e "👤 CLIENT : ${{ github.event.inputs.client }}"
+        echo -e "🧑‍💼 PROJECT_MANAGER : ${{ github.event.inputs.projectManager }}"
+        echo -e "🧪 QA_MANAGER : ${{ github.event.inputs.qaManager }}"
+        echo -e "⏱️ EXPECTED_LOAD_TIME : ${{ github.event.inputs.expectedLoadTime }}"
+        echo -e "🔗 TESTFILES_LIST : ${valid_urls[*]}"
 
-        # Export environment variables
+        # Export environment variables 
         echo "PROJECT_NAME=${{ github.event.inputs.projectName }}" >> $GITHUB_ENV
         echo "CLIENT=${{ github.event.inputs.client }}" >> $GITHUB_ENV
         echo "PROJECT_MANAGER=${{ github.event.inputs.projectManager }}" >> $GITHUB_ENV
         echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
         echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
+        echo "TESTFILES_LIST=${valid_urls[*]}" >> $GITHUB_ENV 
+
+
+        # Export URLs as a list 
         echo "TESTFILES_LIST=${valid_urls[*]}" >> $GITHUB_ENV
 
-
-        # Export URLs as a list
-        echo "TESTFILES_LIST=${valid_urls[*]}" >> $GITHUB_ENV
-
-    # Step 5: Start Lighthouse Execution
+    # Step 5: Start Lighthouse Execution 
     - name: Execute Lighthouse Tests
       run: |
         echo -e "🚀 Starting Lighthouse tests..."
