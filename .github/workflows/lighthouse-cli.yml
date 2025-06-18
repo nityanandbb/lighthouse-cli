@@ -85,10 +85,10 @@ jobs:
         '{projectName: $projectName, client: $client, projectManager: $projectManager, qaManager: $qaManager, expectedLoadTime: $expectedLoadTime}')
 
         # Encode JSON to base64 to avoid newline/quote issues
-        encoded=$(echo "$json" | base64)
+       encoded=$(echo "$json" | base64 | tr -d '\n')
 
         echo "GITHUB_INPUTS_BASE64=$encoded" >> $GITHUB_ENV
-        
+
         # Export URLs as a list
         echo "TESTFILES_LIST=${valid_urls[*]}" >> $GITHUB_ENV
 
