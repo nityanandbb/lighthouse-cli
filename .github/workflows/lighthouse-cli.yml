@@ -74,24 +74,14 @@ jobs:
 
         echo -e "✅ All URLs validated successfully."
 
-    - name: Export GitHub inputs as base64 JSON string
+    - name: Export individual GitHub inputs as environment variables
       run: |
-        json=$(jq -n \
-          --arg projectName "${{ github.event.inputs.projectName }}" \
-          --arg client "${{ github.event.inputs.client }}" \
-          --arg projectManager "${{ github.event.inputs.projectManager }}" \
-          --arg qaManager "${{ github.event.inputs.qaManager }}" \
-          --arg expectedLoadTime "${{ github.event.inputs.expectedLoadTime }}" \
-          '{
-          "projectName": $projectName,
-          "client": $client,
-          "projectManager": $projectManager,
-          "qaManager": $qaManager,
-          "expectedLoadTime": $expectedLoadTime
-          }')
-
-        encoded=$(echo "$json" | base64 | tr -d '\n')
-        echo "GITHUB_INPUTS_BASE64=$encoded" >> $GITHUB_ENV
+        echo "PROJECT_NAME=${{ github.event.inputs.projectName }}" >> $GITHUB_ENV
+        echo "CLIENT=${{ github.event.inputs.client }}" >> $GITHUB_ENV
+        echo "PROJECT_MANAGER=${{ github.event.inputs.projectManager }}" >> $GITHUB_ENV
+        echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
+        echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
+        echo "TESTFILES_LIST=${valid_urls[*]}" >> $GITHUB_ENV
 
         # Export URLs as a list
         echo "TESTFILES_LIST=${valid_urls[*]}" >> $GITHUB_ENV
@@ -100,7 +90,7 @@ jobs:
     - name: Execute Lighthouse Tests
       run: |
         echo -e "🚀 Starting Lighthouse tests..."
-
+ 
         # Convert test URLs list into an array
         IFS=' ' read -r -a testList <<< "$TESTFILES_LIST"
         
