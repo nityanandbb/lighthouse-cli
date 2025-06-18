@@ -41,6 +41,15 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: "^18.3 || ^20.18.1"
+    
+    # 🔧 NEW for cli pdf only  Step: Install OpenSSL libraries for html-pdf || if puppeter pdf used this not req.
+    - name: Install OpenSSL libraries
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libssl-de
+    
+    - name: Check OpenSSL Version
+      run: openssl version
 
     # Step 3: Install Dependencies
     - name: Install Lighthouse CLI
