@@ -41,8 +41,9 @@ const getFinalConfig = () => {
 };
 
 
-// Function to save the final config to githubconfigsFile.json
+// Function to save the final config to githubconfigsFile.json 
 const saveConfigToFile = (configData) => {
+
   try {
     //Test
     fs.writeFileSync(
@@ -55,6 +56,7 @@ const saveConfigToFile = (configData) => {
     console.error("Error writing to githubconfigsFile.json:", err);
   }
 };
+
 
 // Main execution
 const finalConfigData = getFinalConfig();
