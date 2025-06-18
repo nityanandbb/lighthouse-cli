@@ -1010,7 +1010,7 @@ async function main() {
   await generatePdfReportFromData(logo, summaryData, configData, analysisData); // 
 
   console.log(
-    " ✅✅✅ 📄 PDF Enhanced Lighthouse PFD  report generation completed! 📄📄📄 ✅✅✅"
+    " ✅✅✅ 📄 PDF Enhanced Lighthouse PDF  report generation completed! 📄📄📄 ✅✅✅"
   ); 
 }
 

@@ -29,7 +29,7 @@ on:
 
 jobs:
   setup-and-execute:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     # Step 1: Checkout repository
@@ -41,15 +41,6 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: "^18.3 || ^20.18.1"
-    
-    # 🔧 NEW for cli pdf only  Step: Install OpenSSL libraries for html-pdf || if puppeter pdf used this not req.
-    - name: Install OpenSSL libraries
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libssl-dev
-    
-    - name: Check OpenSSL Version
-      run: openssl version
 
     # Step 3: Install Dependencies
     - name: Install Lighthouse CLI
