@@ -17,7 +17,7 @@ const executeLighthouseCLI = async (urls) => {
     // Generate final HTML report
     console.log("Generating final HTML report...");
    // execSync("node generateFinalHtml.js", { stdio: "inherit" });
-    execSync("node generateFinalHtmlReport_avg_analysis.js", {
+    execSync("node generateFinalHtmlReport_avg_analysis_v11.js", {
       stdio: "inherit",
     });
 
