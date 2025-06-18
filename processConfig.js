@@ -11,16 +11,16 @@ const getConfigData = () => {
   }
 };
 
-// Function to read GitHub inputs (from the environment or GitHub Actions context)
+// Function to read GitHub inputs (from the environment or GitHub Actions context);
 const getGithubInputs = () => {
   return {
-    projectName: process.env.PROJECT_NAME,
-    client: process.env.CLIENT,
-    projectManager: process.env.PROJECT_MANAGER,
-    qaManager: process.env.QA_MANAGER,
-    expectedLoadTime: process.env.EXPECTED_LOAD_TIME,
+    projectName: process.env.PROJECT_NAME, 
+    client: process.env.CLIENT, 
+    projectManager: process.env.PROJECT_MANAGER, 
+    qaManager: process.env.QA_MANAGER, 
+    expectedLoadTime: process.env.EXPECTED_LOAD_TIME, 
   };
-};
+}; 
 
 // Function to determine the final config to use (GitHub inputs or fallback to config.json)
 const getFinalConfig = () => {
