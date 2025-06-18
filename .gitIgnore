@@ -68,3 +68,7 @@ workflow_inputs.json
 
 #pdf files ignore
 *.pdf
+#test data.
+metrics_*.json
+lighthouse-analysis-data.json
+lhci-summary.json
