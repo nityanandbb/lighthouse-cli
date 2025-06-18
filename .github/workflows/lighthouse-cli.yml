@@ -74,16 +74,19 @@ jobs:
 
         echo -e "✅ All URLs validated successfully."
 
-    - name: Export GitHub inputs as JSON for Node.js script
+    - name: Export GitHub inputs and URL list to $GITHUB_ENV
       run: |
-        echo "GITHUB_INPUTS=$(jq -n \
+        # Create JSON string using jq
+        json=$(jq -n \
         --arg projectName "${{ github.event.inputs.projectName }}" \
         --arg client "${{ github.event.inputs.client }}" \
         --arg projectManager "${{ github.event.inputs.projectManager }}" \
         --arg qaManager "${{ github.event.inputs.qaManager }}" \
         --arg expectedLoadTime "${{ github.event.inputs.expectedLoadTime }}" \
-        '{projectName: $projectName, client: $client, projectManager: $projectManager, qaManager: $qaManager, expectedLoadTime: $expectedLoadTime}')" >> $GITHUB_ENV
+        '{projectName: $projectName, client: $client, projectManager: $projectManager, qaManager: $qaManager, expectedLoadTime: $expectedLoadTime}')
 
+        # Use printf to write without breaking $GITHUB_ENV formatting
+        printf "🔠 GITHUB_INPUTS=%s\n" "$json" >> $GITHUB_ENV
         
         # Export URLs as a list
         echo "TESTFILES_LIST=${valid_urls[*]}" >> $GITHUB_ENV
