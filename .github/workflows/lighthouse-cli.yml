@@ -74,12 +74,16 @@ jobs:
 
         echo -e "✅ All URLs validated successfully."
 
-        # Export environment variables for use in scripts
-        echo "PROJECT_NAME=${{ github.event.inputs.projectName }}" >> $GITHUB_ENV
-        echo "CLIENT=${{ github.event.inputs.client }}" >> $GITHUB_ENV
-        echo "PROJECT_MANAGER=${{ github.event.inputs.projectManager }}" >> $GITHUB_ENV
-        echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
-        echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
+    - name: Export GitHub inputs as JSON for Node.js script
+      run: |
+        echo "GITHUB_INPUTS=$(jq -n \
+        --arg projectName "${{ github.event.inputs.projectName }}" \
+        --arg client "${{ github.event.inputs.client }}" \
+        --arg projectManager "${{ github.event.inputs.projectManager }}" \
+        --arg qaManager "${{ github.event.inputs.qaManager }}" \
+        --arg expectedLoadTime "${{ github.event.inputs.expectedLoadTime }}" \
+        '{projectName: $projectName, client: $client, projectManager: $projectManager, qaManager: $qaManager, expectedLoadTime: $expectedLoadTime}')" >> $GITHUB_ENV
+
         
         # Export URLs as a list
         echo "TESTFILES_LIST=${valid_urls[*]}" >> $GITHUB_ENV
