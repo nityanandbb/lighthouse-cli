@@ -1,4 +1,4 @@
-
+// html pdf : not supported in ubuntu github...
 // pdf improvement and ui fixes. components/generatePdfReportFromData_v10NA.js
 const fs = require("fs");
 const pdf = require("html-pdf");

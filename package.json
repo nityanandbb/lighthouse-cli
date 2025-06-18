@@ -13,6 +13,6 @@
     "@lhci/cli": "^0.14.0"
   },
   "dependencies": {
-    "html-pdf": "^3.0.1"
+    "puppeteer": "^24.10.1"
   }
 }
