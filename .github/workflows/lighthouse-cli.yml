@@ -106,7 +106,7 @@ jobs:
     - name: Wait for Reports to be generated
       run: |
         echo -e "⏳ Waiting for 60 seconds to ensure reports are generated..."
-        sleep 60
+        sleep 40
 
     # Step 7: Export and Move Reports to Reports_QA Folder
     - name: Export and Move Reports
@@ -121,6 +121,7 @@ jobs:
         echo -e "✅ HTML report saved and moved to 'Reports_QA'."
 
         # Move PDF reports to Reports_QA folder
+         sleep 20
         mv *.pdf ./Reports_QA/
         echo -e "✅📝 pdf report saved and moved to 'Reports_QA'."
 
