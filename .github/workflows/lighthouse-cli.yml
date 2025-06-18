@@ -24,7 +24,7 @@ on:
         required: false
         default: "3 seconds"
       urls:
-        description: "Comma-separated list of URLs (e.g., 'url1.com,url2.com')"
+        description: "Comma-separated list of URLs (e.g., url1.com url2.com url2.com )"
         required: true
 
 jobs:
@@ -74,8 +74,8 @@ jobs:
 
         echo -e "✅ All URLs validated successfully."
 
-    - name: Export individual GitHub inputs as environment variables
-      run: |
+        # Export individual GitHub inputs as environment variables
+
         echo "PROJECT_NAME=${{ github.event.inputs.projectName }}" >> $GITHUB_ENV
         echo "CLIENT=${{ github.event.inputs.client }}" >> $GITHUB_ENV
         echo "PROJECT_MANAGER=${{ github.event.inputs.projectManager }}" >> $GITHUB_ENV
