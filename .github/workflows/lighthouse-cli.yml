@@ -74,9 +74,8 @@ jobs:
 
         echo -e "✅ All URLs validated successfully."
 
-    - name: Export GitHub inputs and URL list to $GITHUB_ENV
+    - name: Export GitHub inputs as base64 JSON string
       run: |
-        # Create JSON string using jq
         json=$(jq -n \
         --arg projectName "${{ github.event.inputs.projectName }}" \
         --arg client "${{ github.event.inputs.client }}" \
@@ -85,8 +84,10 @@ jobs:
         --arg expectedLoadTime "${{ github.event.inputs.expectedLoadTime }}" \
         '{projectName: $projectName, client: $client, projectManager: $projectManager, qaManager: $qaManager, expectedLoadTime: $expectedLoadTime}')
 
-        # Use printf to write without breaking $GITHUB_ENV formatting
-        printf "🔠 GITHUB_INPUTS=%s\n" "$json" >> $GITHUB_ENV
+        # Encode JSON to base64 to avoid newline/quote issues
+        encoded=$(echo "$json" | base64)
+
+        echo "GITHUB_INPUTS_BASE64=$encoded" >> $GITHUB_ENV
         
         # Export URLs as a list
         echo "TESTFILES_LIST=${valid_urls[*]}" >> $GITHUB_ENV

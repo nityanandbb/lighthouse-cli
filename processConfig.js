@@ -14,16 +14,16 @@ const getConfigData = () => {
 // Function to read GitHub inputs (from the environment or GitHub Actions context)
 const getGithubInputs = () => {
   try {
-    const inputs = process.env.GITHUB_INPUTS
-      ? JSON.parse(process.env.GITHUB_INPUTS)
-      : {};
-    return inputs;
+    const base64 = process.env.GITHUB_INPUTS_BASE64;
+    if (!base64) return {};
+
+    const json = Buffer.from(base64, "base64").toString("utf8");
+    return JSON.parse(json);
   } catch (error) {
-    console.error("Error parsing GITHUB_INPUTS:", error);
+    console.error("Error decoding/parsing GITHUB_INPUTS_BASE64:", error);
     return {};
   }
 };
-
 
 // Function to determine the final config to use (GitHub inputs or fallback to config.json)
 const getFinalConfig = () => {
