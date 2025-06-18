@@ -105,8 +105,8 @@ jobs:
     # Step 6: Wait for Report Generation (Adding Delay)
     - name: Wait for Reports to be generated
       run: |
-        echo -e "⏳ Waiting for 20 seconds to ensure reports are generated..."
-        sleep 20
+        echo -e "⏳ Waiting for 60 seconds to ensure reports are generated..."
+        sleep 60
 
     # Step 7: Export and Move Reports to Reports_QA Folder
     - name: Export and Move Reports
@@ -120,6 +120,10 @@ jobs:
         mv *.html ./Reports_QA/
         echo -e "✅ HTML report saved and moved to 'Reports_QA'."
 
+        # Move PDF reports to Reports_QA folder
+        mv *.pdf ./Reports_QA/
+        echo -e "✅📝 pdf report saved and moved to 'Reports_QA'."
+
         # Debug: List files in the current directory (to help troubleshoot)
         ls -l
 
@@ -128,7 +132,7 @@ jobs:
         echo -e "✅ CSV report saved and moved to 'Reports_QA'."
 
     # Step 8: Upload CSV and HTML Reports as Artifacts
-    - name: Upload CSV and HTML Reports as Artifacts
+    - name: Upload CSV and HTML, PDF Reports as Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: lighthouse-csv-html-reports
