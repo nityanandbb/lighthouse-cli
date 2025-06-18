@@ -24,15 +24,22 @@ const getGithubInputs = () => {
 
 // Function to determine the final config to use (GitHub inputs or fallback to config.json)
 const getFinalConfig = () => {
-  let configData = getGithubInputs();
+  const configData = getGithubInputs();
 
-  if (!configData || Object.keys(configData).length === 0) {
-    console.log("No GitHub inputs received. Falling back to config.json...");
-    configData = getConfigData();
+  const hasValidInput = Object.values(configData).some(
+    (val) => val !== undefined && val !== ""
+  );
+
+  if (!hasValidInput) {
+    console.log(
+      "⚠️ No valid GitHub inputs found. Falling back to config.json..."
+    );
+    return getConfigData();
   }
 
   return configData;
 };
+
 
 // Function to save the final config to githubconfigsFile.json
 const saveConfigToFile = (configData) => {
