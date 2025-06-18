@@ -1,4 +1,3 @@
-// pre version berfore v11.
 const fs = require("fs");
 const { execSync } = require("child_process");
 // Require the PDF generation function
@@ -93,6 +92,22 @@ const generateFinalHTMLReport = (summaryData, configData, analysisData) => {
   const getPercentage = (score) => {
     return (score * 100).toFixed(0) + "%";
   };
+
+  // NEW HELPER FUNCTION: To format performance percentages with conditional styling
+  const getPerformancePercentageHtml_Desktop = (score) => {
+    // Adding average below :-
+      if (score >= 0.9) return "#006400"; // Dark Green - Excellent
+      if (score < 0.9) return "red"; // Dark Red - Poor
+      return "black"; // Fallback/Undefined
+    };
+
+  // NEW HELPER FUNCTION: To format performance percentages with conditional styling
+  const getPerformancePercentageHtml_Mobile = (score) => {
+     // Adding average below :-
+      if (score >= 0.8) return "#006400"; // Dark Green - Excellent
+      if (score < 0.8) return "red"; // Dark Red - Poor
+      return "black"; // Fallback/Undefined
+    };
 
   // Group data by URL and calculate average performance and SEO separately for Desktop and Mobile
   const groupedData = summaryData.reduce((acc, entry) => {
@@ -577,7 +592,8 @@ const generateFinalHTMLReport = (summaryData, configData, analysisData) => {
     // Add ONE row for Desktop (if desktop data exists);
 
     if (entries.desktop.length > 0) {
-      const performanceColor = getPassFailColor(desktopAverage);
+      const performanceColor =
+        getPerformancePercentageHtml_Desktop(desktopAverage);
       const seoColor = getPassFailColor(desktopSEO);
       const accessibilityColor = getPassFailColor(desktopAccessibility);
 
@@ -604,7 +620,8 @@ const generateFinalHTMLReport = (summaryData, configData, analysisData) => {
 
     // Add ONE row for Mobile (if mobile data exists)
     if (entries.mobile.length > 0) {
-      const performanceColor = getPassFailColor(mobileAverage);
+      const performanceColor =
+        getPerformancePercentageHtml_Mobile(mobileAverage);
       const seoColor = getPassFailColor(mobileSEO);
       const accessibilityColor = getPassFailColor(mobileAccessibility);
 
@@ -686,7 +703,7 @@ const generateFinalHTMLReport = (summaryData, configData, analysisData) => {
       avgAllSite_DesktopAccessibility
   );
 
-  // Adding average below :- 
+  // Adding average below :-
   const getAverageColor = (score) => {
     if (score >= 0.9) return "#006400"; // Dark Green - Excellent
     if (score >= 0.5) return "#b8860b"; // Dark Yellow (GoldenRod) - Needs Improvement
@@ -694,17 +711,16 @@ const generateFinalHTMLReport = (summaryData, configData, analysisData) => {
     return "black"; // Fallback/Undefined
   };
 
-
   htmlContent += `
   <tr>
     <td colspan="3" style="color: #800080; font-weight: bold; border: 2px solid black;">Total site average Performance for Desktop 🖥️ </font></td>
-    <td class="average-column" style="color: ${getAverageColor(
+    <td class="average-column" style="color: ${getPerformancePercentageHtml_Desktop(
       avgPerformanceDesktop
     )};">${getPercentage(avgPerformanceDesktop)} </td>
 </tr>
 <tr>
     <td colspan="3" style="color: #1976D2; font-weight: bold; border: 2px solid black;">Total site average Performance for Mobile 📱</font></td>
-    <td class="average-column" style="color: ${getAverageColor(
+    <td class="average-column" style="color: ${getPerformancePercentageHtml_Mobile(
       avgPerformanceMobile
     )};">${getPercentage(avgPerformanceMobile)} </td>
 </tr>
@@ -733,7 +749,7 @@ const generateFinalHTMLReport = (summaryData, configData, analysisData) => {
     )};">${getPercentage(avgAllSite_MobileAccessibility)} </td>
 </tr>
 `;
-  
+
   // Generate analysis rows for the separate table
   const generateAnalysisTableRows = () => {
     let analysisRows = "";
