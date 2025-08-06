@@ -18,7 +18,7 @@ on:
         required: true
         default: "1"
       baseUrl:
-        description: "🌐 Base URL (Required for modes 1, 2, 3, 5)"
+        description: "🌐 Base URL (Required for modes 1, 2, 3, 5)" 
         required: false
       selector:
         description: "🎯 CSS or XPath selector (Required for mode 2 and 3)"
@@ -165,8 +165,9 @@ jobs:
           name: lighthouse-csv-html-reports
           path: ./Reports_QA/*
 
-      - name: 📦 Upload Lighthouse Full Results
+      - name: 📦 Upload Lighthouse Full Results 
         uses: actions/upload-artifact@v4
         with:
-          name: lighthouse-full-results
+          name: lighthouse-full-results 
           path: ./.lighthouseci/*
+ 
