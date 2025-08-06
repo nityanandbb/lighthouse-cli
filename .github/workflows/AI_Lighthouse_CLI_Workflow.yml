@@ -130,7 +130,7 @@ jobs:
             echo "$RAW_INPUT" | tr ' ' '\n' > urlList.txt
           else
             node core/githubTestUrlBuilder.js
-          }
+          fi
 
       - name: 🚀 Run Lighthouse Tests
         run: |
