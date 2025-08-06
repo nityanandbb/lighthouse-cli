@@ -1,34 +1,40 @@
-// core/githubTestUrlBuilder.js
 const fs = require("fs");
 const { main } = require("./testUrlBuilder");
 
-// Read mode and input from environment variables
 const mode = parseInt(process.env.MODE, 10);
-const url = process.env.URL;
-const selector = process.env.SELECTOR || "";
-const rawInput = process.env.RAW_INPUT || "";
+const baseUrl = process.env.BASE_URL?.trim();
+const selector = process.env.SELECTOR?.trim();
 
-// Call main extractor function
-const urls = main(mode, { url, selector, rawInput });
+async function run() {
+  let urls;
 
-// Deduplicate and trim URLs
-const linkSet = new Set(urls.map((u) => u.trim().replace(/\/$/, "")));
-const finalURLs = [...linkSet];
+  try {
+    urls = await main(mode, {
+      url: baseUrl,
+      selector,
+    });
+  } catch (err) {
+    console.error("❌ Error running extractor function:", err);
+    process.exit(1);
+  }
 
-// Save locally for reference/debugging
-fs.writeFileSync(
-  "TestURL.js",
-  `process.env.TESTFILES_LIST = "${finalURLs.join(" ")}";`
-);
-console.log(`📁 Written to TestURL.js with ${finalURLs.length} URLs.`);
+  if (!Array.isArray(urls)) {
+    console.error("❌ Extractor did not return an array.");
+    process.exit(1);
+  }
 
-// Export to GitHub Actions environment
-if (process.env.GITHUB_ENV) {
-  fs.appendFileSync(
-    process.env.GITHUB_ENV,
-    `TESTFILES_LIST=${finalURLs.join(" ")}\n`
+  // Clean up and deduplicate URLs
+  const finalURLs = Array.from(
+    new Set(urls.map((u) => u.trim().replace(/\/$/, "")))
+  ).filter(Boolean);
+
+  // Write to TestURL.js for local reuse
+  fs.writeFileSync(
+    "TestURL.js",
+    `process.env.TESTFILES_LIST = "${finalURLs.join(" ")}";\n`
   );
-  console.log("✅ TESTFILES_LIST exported to GitHub Actions environment.");
-} else {
-  console.warn("⚠️ GITHUB_ENV not found. Skipping environment export.");
+
+  console.log(`📁 Written to TestURL.js with ${finalURLs.length} URLs.`);
 }
+
+run();
