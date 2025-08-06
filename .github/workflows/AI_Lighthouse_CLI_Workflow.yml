@@ -1,0 +1,164 @@
+name: "🚀 AI + Lighthouse Audit CLI Workflow"
+
+on:
+  workflow_dispatch:
+    inputs:
+      aiAnalysis:
+        description: "🧠 Enable AI Analysis? (yes / no)"
+        required: true
+        default: "no"
+      mode:
+        description: |
+          🎯 Select Test Mode:
+          1: Auto Extract (Hover + Heuristics)
+          2: CSS Selector
+          3: XPath Selector
+          4: Raw URL List
+          5: All Anchor Tags
+        required: true
+        default: "1"
+      baseUrl:
+        description: "🌐 Base URL (Required for modes 1, 2, 3, 5)"
+        required: false
+      selector:
+        description: "🎯 CSS or XPath selector (Required for mode 2 and 3)"
+        required: false
+      rawInput:
+        description: "📄 Raw space-separated URLs (Required for mode 4)"
+        required: false
+      projectName:
+        description: "📦 Project Name"
+        required: false
+        default: "Internal"
+      client:
+        description: "👤 Client Name"
+        required: false
+        default: "Internal"
+      projectManager:
+        description: "🧑‍💼 Project Manager"
+        required: false
+        default: "Kunal"
+      qaManager:
+        description: "🧪 QA Manager"
+        required: false
+        default: "Archana"
+      expectedLoadTime:
+        description: "⏱️ Expected Load Time (e.g., '3 seconds')"
+        required: false
+        default: "3 seconds"
+
+jobs:
+  setup-and-execute:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: ⬇️ Checkout Code
+      uses: actions/checkout@v4
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "^18.3 || ^20.18.1"
+
+    - name: 📦 Install Dependencies
+      run: npm install
+
+    - name: 🧪 Validate Inputs & Export Env
+      run: |
+        echo "✅ Validating Inputs..."
+
+        # Convert AI analysis input to boolean
+        ai="${{ github.event.inputs.aiAnalysis }}"
+        if [[ "$ai" == "yes" ]]; then
+          echo "AI_ANALYSIS=true" >> $GITHUB_ENV
+        else
+          echo "AI_ANALYSIS=false" >> $GITHUB_ENV
+        fi
+
+        mode="${{ github.event.inputs.mode }}"
+        baseUrl="${{ github.event.inputs.baseUrl }}"
+        selector="${{ github.event.inputs.selector }}"
+        rawInput="${{ github.event.inputs.rawInput }}"
+
+        # Validate mode
+        if ! [[ "$mode" =~ ^[1-5]$ ]]; then
+          echo "❌ Invalid mode selected. Must be 1, 2, 3, 4, or 5."
+          exit 1
+        fi
+
+        # Validate required inputs per mode
+        if [[ "$mode" == "1" || "$mode" == "2" || "$mode" == "3" || "$mode" == "5" ]]; then
+          if [ -z "$baseUrl" ]; then
+            echo "❌ baseUrl is required for mode $mode."
+            exit 1
+          fi
+        fi
+
+        if [[ "$mode" == "2" || "$mode" == "3" ]]; then
+          if [ -z "$selector" ]; then
+            echo "❌ selector is required for mode $mode."
+            exit 1
+          fi
+        fi
+
+        if [[ "$mode" == "4" && -z "$rawInput" ]]; then
+          echo "❌ rawInput is required for mode 4."
+          exit 1
+        fi
+
+        # Export inputs
+        echo "MODE=$mode" >> $GITHUB_ENV
+        echo "BASE_URL=$baseUrl" >> $GITHUB_ENV
+        echo "SELECTOR=$selector" >> $GITHUB_ENV
+        echo "RAW_INPUT=$rawInput" >> $GITHUB_ENV
+
+        echo "PROJECT_NAME=${{ github.event.inputs.projectName }}" >> $GITHUB_ENV
+        echo "CLIENT=${{ github.event.inputs.client }}" >> $GITHUB_ENV
+        echo "PROJECT_MANAGER=${{ github.event.inputs.projectManager }}" >> $GITHUB_ENV
+        echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
+        echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
+
+        echo "✅ Inputs validated and exported successfully!"
+        echo "-------------------------------------------"
+        echo "📦 Mode: $mode"
+        echo "🌐 Base URL: $baseUrl"
+        echo "🔎 Selector: $selector"
+        echo "📄 Raw Input: $rawInput"
+        echo "🧠 AI Analysis: $ai"
+        echo "-------------------------------------------"
+
+    - name: 🏃🏼 Run URL Extraction
+      run: |
+        echo "🧪 Starting mode $MODE test extraction..."
+        node run.js
+
+    - name: 🚀 Run Lighthouse Tests
+      run: |
+        echo "📡 Starting Lighthouse audit..."
+        node executeGithub.js
+        echo "✅ Lighthouse audit complete."
+
+    - name: ⏳ Wait for Reports
+      run: |
+        echo "⌛ Sleeping 40s to allow report generation..."
+        sleep 40
+
+    - name: 📂 Move Reports to Reports_QA
+      run: |
+        mkdir -p ./Reports_QA
+        mv *.html ./Reports_QA/ 2>/dev/null || true
+        mv *.pdf ./Reports_QA/ 2>/dev/null || true
+        mv ./results/*.csv ./Reports_QA/ 2>/dev/null || true
+        echo "✅ Reports moved to Reports_QA"
+
+    - name: 📤 Upload Reports as Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: lighthouse-csv-html-reports
+        path: ./Reports_QA/*
+
+    - name: 📦 Upload Lighthouse Full Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: lighthouse-full-results
+        path: ./.lighthouseci/*
