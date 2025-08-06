@@ -29,10 +29,10 @@ async function run() {
   ).filter(Boolean);
 
   // Write to TestURL.js for local reuse
-  fs.writeFileSync(
-    "TestURL.js",
-    `process.env.TESTFILES_LIST = "${finalURLs.join(" ")}";\n`
-  );
+ fs.writeFileSync(
+   "TestURL.js",
+   `exports.urls = ${JSON.stringify(finalURLs, null, 2)};\n`
+ );
 
   console.log(`📁 Written to TestURL.js with ${finalURLs.length} URLs.`);
 }
