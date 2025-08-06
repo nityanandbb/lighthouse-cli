@@ -1,4 +1,4 @@
-// TestURL.js
+// TestLocalURLList.js
 const { executeLighthouseCLI } = require("./execution");
 
 const urls = [
