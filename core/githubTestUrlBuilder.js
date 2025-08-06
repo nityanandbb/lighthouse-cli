@@ -13,26 +13,24 @@ async function run() {
       url: baseUrl,
       selector,
     });
+
+    // ✅ Check again here
+    if (!Array.isArray(urls)) {
+      throw new Error("Extractor did not return an array.");
+    }
   } catch (err) {
-    console.error("❌ Error running extractor function:", err);
+    console.error("❌ Error in main() or extractor:", err);
     process.exit(1);
   }
 
-  if (!Array.isArray(urls)) {
-    console.error("❌ Extractor did not return an array.");
-    process.exit(1);
-  }
-
-  // Clean up and deduplicate URLs
   const finalURLs = Array.from(
     new Set(urls.map((u) => u.trim().replace(/\/$/, "")))
   ).filter(Boolean);
 
-  // Write to TestURL.js for local reuse
- fs.writeFileSync(
-   "TestURL.js",
-   `exports.urls = ${JSON.stringify(finalURLs, null, 2)};\n`
- );
+  fs.writeFileSync(
+    "TestURL.js",
+    `exports.urls = ${JSON.stringify(finalURLs, null, 2)};\n`
+  );
 
   console.log(`📁 Written to TestURL.js with ${finalURLs.length} URLs.`);
 }

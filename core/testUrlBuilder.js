@@ -13,25 +13,20 @@ async function main(mode, options) {
     switch (mode) {
       case 1:
         return await extractWithHoverAndClick(options.url);
-
       case 2:
         return await extractUsingCssSelector(options.url, options.selector);
-
       case 3:
         return await extractUsingXPathSelector(options.url, options.selector);
-
       case 4:
         return await extractFromRawUrlList(options.rawInput);
-
       case 5:
         return await extractAllHrefLinks(options.url);
-
       default:
         console.error("❌ Invalid mode. Use 1, 2, 3, 4 or 5.");
         return [];
     }
   } catch (err) {
-    console.error("❌ Error inside main():", err);
+    console.error("❌ Error inside testUrlBuilder main():", err);
     return [];
   }
 }
