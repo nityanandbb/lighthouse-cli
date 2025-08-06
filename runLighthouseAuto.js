@@ -1,19 +1,15 @@
-// Load URLs from TestURL.js (sets process.env.TESTFILES_LIST)
-require("./TestURL.js");
+// runLighthouseAuto.js
 
+// ✅ This file loads URLs from TestURL.js and runs Lighthouse using those URLs
+const { urls } = require("./TestURL.js");
 const { executeLighthouseCLI } = require("./execution");
 
-// Get URLs
-const urlsEnv = process.env.TESTFILES_LIST;
-
-if (!urlsEnv) {
+if (!urls || !Array.isArray(urls) || urls.length === 0) {
   console.error(
-    "❌ TESTFILES_LIST is empty or missing. Run mode 1, 2, 3, or 5 first."
+    "❌ No URLs found. Make sure TestURL.js exports a valid `urls` array."
   );
   process.exit(1);
 }
-
-const urls = urlsEnv.split(" ").filter(Boolean);
 
 console.log("🔍 URLs to be tested:");
 urls.forEach((url, i) => console.log(`  ${i + 1}. ${url}`));
