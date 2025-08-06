@@ -65,82 +65,75 @@ jobs:
 
     - name: 🧪 Validate Inputs & Export Env
       run: |
-        echo "✅ Validating Inputs..."
+        echo -e "\033[1;34m🔍 Validating Inputs...\033[0m"
 
-        # Convert AI analysis input to boolean
         ai="${{ github.event.inputs.aiAnalysis }}"
+        mode="${{ github.event.inputs.mode }}"
+        baseUrl="${{ github.event.inputs.baseUrl }}"
+        selector="${{ github.event.inputs.selector }}"
+        rawInput="${{ github.event.inputs.rawInput }}"
+
+        # Validate AI input
         if [[ "$ai" == "yes" ]]; then
           echo "AI_ANALYSIS=true" >> $GITHUB_ENV
         else
           echo "AI_ANALYSIS=false" >> $GITHUB_ENV
         fi
 
-        mode="${{ github.event.inputs.mode }}"
-        baseUrl="${{ github.event.inputs.baseUrl }}"
-        selector="${{ github.event.inputs.selector }}"
-        rawInput="${{ github.event.inputs.rawInput }}"
-
         # Validate mode
         if ! [[ "$mode" =~ ^[1-5]$ ]]; then
-          echo "❌ Invalid mode selected. Must be 1, 2, 3, 4, or 5."
+          echo -e "\033[0;31m❌ Invalid mode selected: $mode. Must be 1, 2, 3, 4, or 5.\033[0m"
           exit 1
         fi
 
-        # Validate required inputs per mode
-        if [[ "$mode" == "1" || "$mode" == "2" || "$mode" == "3" || "$mode" == "5" ]]; then
-          if [ -z "$baseUrl" ]; then
-            echo "❌ baseUrl is required for mode $mode."
-            exit 1
-          fi
+        # Mode-specific validations
+        if [[ "$mode" =~ ^[1|2|3|5]$ && -z "$baseUrl" ]]; then
+          echo -e "\033[0;31m❌ baseUrl is required for mode $mode.\033[0m"
+          exit 1
         fi
 
-        if [[ "$mode" == "2" || "$mode" == "3" ]]; then
-          if [ -z "$selector" ]; then
-            echo "❌ selector is required for mode $mode."
-            exit 1
-          fi
+        if [[ "$mode" =~ ^[2|3]$ && -z "$selector" ]]; then
+          echo -e "\033[0;31m❌ selector is required for mode $mode.\033[0m"
+          exit 1
         fi
 
         if [[ "$mode" == "4" && -z "$rawInput" ]]; then
-          echo "❌ rawInput is required for mode 4."
+          echo -e "\033[0;31m❌ rawInput is required for mode 4.\033[0m"
           exit 1
         fi
 
-        # Export inputs
+        # Export validated inputs
         echo "MODE=$mode" >> $GITHUB_ENV
         echo "BASE_URL=$baseUrl" >> $GITHUB_ENV
         echo "SELECTOR=$selector" >> $GITHUB_ENV
         echo "RAW_INPUT=$rawInput" >> $GITHUB_ENV
-
         echo "PROJECT_NAME=${{ github.event.inputs.projectName }}" >> $GITHUB_ENV
         echo "CLIENT=${{ github.event.inputs.client }}" >> $GITHUB_ENV
         echo "PROJECT_MANAGER=${{ github.event.inputs.projectManager }}" >> $GITHUB_ENV
         echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
         echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
 
-        echo "✅ Inputs validated and exported successfully!"
-        echo "-------------------------------------------"
-        echo "📦 Mode: $mode"
+        echo -e "\033[1;32m✅ All inputs validated and exported.\033[0m"
+        echo "------------------------------------------"
+        echo "🎯 Mode: $mode"
         echo "🌐 Base URL: $baseUrl"
         echo "🔎 Selector: $selector"
         echo "📄 Raw Input: $rawInput"
         echo "🧠 AI Analysis: $ai"
-        echo "-------------------------------------------"
+        echo "------------------------------------------"
 
-    - name: 🏃🏼 Run URL Extraction
-      run: |
-        echo "🧪 Starting mode $MODE test extraction..."
-        node run.js
+    - name: 🔧 Prepare URL list
+      run: node core/githubTestUrlBuilder.js
 
     - name: 🚀 Run Lighthouse Tests
       run: |
-        echo "📡 Starting Lighthouse audit..."
+        echo -e "\033[1;36m📡 Starting Lighthouse audit...\033[0m"
         node executeGithub.js
-        echo "✅ Lighthouse audit complete."
+        echo -e "\033[1;32m✅ Lighthouse audit complete.\033[0m"
 
     - name: ⏳ Wait for Reports
       run: |
-        echo "⌛ Sleeping 40s to allow report generation..."
+        echo -e "⌛ Sleeping 40s to allow report generation..."
         sleep 40
 
     - name: 📂 Move Reports to Reports_QA
@@ -149,7 +142,7 @@ jobs:
         mv *.html ./Reports_QA/ 2>/dev/null || true
         mv *.pdf ./Reports_QA/ 2>/dev/null || true
         mv ./results/*.csv ./Reports_QA/ 2>/dev/null || true
-        echo "✅ Reports moved to Reports_QA"
+        echo -e "\033[1;32m✅ Reports moved to Reports_QA\033[0m"
 
     - name: 📤 Upload Reports as Artifact
       uses: actions/upload-artifact@v4
