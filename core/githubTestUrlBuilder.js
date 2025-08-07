@@ -27,10 +27,15 @@ async function run() {
     ...new Set(urls.map((u) => u.trim().replace(/\/$/, ""))),
   ].filter(Boolean);
 
+  const filePath = path.resolve(__dirname, "../TestURL.js");
+
   fs.writeFileSync(
-    OUTPUT_FILE,
+    filePath,
     `exports.urls = ${JSON.stringify(finalURLs, null, 2)};\n`
   );
+
+  console.log(`📁 Written to TestURL.js with ${finalURLs.length} URLs.`);
+  console.log(`🗂️  File location: ${filePath}`);
   console.log(`📁 Written to ${OUTPUT_FILE} with ${finalURLs.length} URLs.`);
 }
 
