@@ -48,7 +48,7 @@ on:
         default: "3 seconds"
 
 jobs:
-  build-url-list:
+  setup-and-execute:
     runs-on: ubuntu-22.04
 
     steps:
@@ -64,66 +64,79 @@ jobs:
         run: npm install
 
       - name: 📦 Install Puppeteer for dynamic modes (1/2/3/5)
-        if: ${{ github.event.inputs.mode != '4' }}
+        if: ${{ env.MODE != '4' }}
         run: npm install puppeteer
 
       - name: 🧪 Validate Inputs & Export Env
         run: |
           echo -e "\033[1;34m🔍 Validating Inputs...\033[0m"
-          echo "AI_ANALYSIS=${{ github.event.inputs.aiAnalysis == 'yes' && 'true' || 'false' }}" >> $GITHUB_ENV
-          echo "MODE=${{ github.event.inputs.mode }}" >> $GITHUB_ENV
-          echo "BASE_URL=${{ github.event.inputs.baseUrl }}" >> $GITHUB_ENV
-          echo "SELECTOR=${{ github.event.inputs.selector }}" >> $GITHUB_ENV
-          echo "RAW_INPUT=${{ github.event.inputs.rawInput }}" >> $GITHUB_ENV
+          ai="${{ github.event.inputs.aiAnalysis }}"
+          mode="${{ github.event.inputs.mode }}"
+          baseUrl="${{ github.event.inputs.baseUrl }}"
+          selector="${{ github.event.inputs.selector }}"
+          rawInput="${{ github.event.inputs.rawInput }}"
+
+          # Validate AI toggle
+          if [[ "$ai" == "yes" ]]; then
+            echo "AI_ANALYSIS=true" >> $GITHUB_ENV
+          else
+            echo "AI_ANALYSIS=false" >> $GITHUB_ENV
+          fi
+
+          # Validate mode
+          if ! [[ "$mode" =~ ^[1-5]$ ]]; then
+            echo -e "\033[0;31m❌ Invalid mode selected: $mode. Must be 1–5.\033[0m"
+            exit 1
+          fi
+
+          # Mode-specific validation
+          if [[ "$mode" =~ ^[1|2|3|5]$ && -z "$baseUrl" ]]; then
+            echo -e "\033[0;31m❌ baseUrl is required for mode $mode.\033[0m"
+            exit 1
+          fi
+          if [[ "$mode" =~ ^[2|3]$ && -z "$selector" ]]; then
+            echo -e "\033[0;31m❌ selector is required for mode $mode.\033[0m"
+            exit 1
+          fi
+          if [[ "$mode" == "4" && -z "$rawInput" ]]; then
+            echo -e "\033[0;31m❌ rawInput is required for mode 4.\033[0m"
+            exit 1
+          fi
+
+          # Export variables
+          echo "MODE=$mode" >> $GITHUB_ENV
+          echo "BASE_URL=$baseUrl" >> $GITHUB_ENV
+          echo "SELECTOR=$selector" >> $GITHUB_ENV
+          echo "RAW_INPUT=$rawInput" >> $GITHUB_ENV
           echo "PROJECT_NAME=${{ github.event.inputs.projectName }}" >> $GITHUB_ENV
           echo "CLIENT=${{ github.event.inputs.client }}" >> $GITHUB_ENV
           echo "PROJECT_MANAGER=${{ github.event.inputs.projectManager }}" >> $GITHUB_ENV
           echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
           echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
+
           echo -e "\033[1;32m✅ All inputs validated and exported.\033[0m"
+          echo "------------------------------------------"
+          echo "🎯 Mode: $mode"
+          echo "🌐 Base URL: $baseUrl"
+          echo "🔎 Selector: $selector"
+          echo "📄 Raw Input: $rawInput"
+          echo "🧠 AI Analysis: $ai"
+          echo "------------------------------------------"
 
       - name: 🔧 Prepare URL List
         run: |
           echo -e "\033[1;34m🔧 Building URL list...\033[0m"
           if [[ "$MODE" == "4" ]]; then
             echo "$RAW_INPUT" | tr ' ' '\n' > urlList.txt
-            echo -e "\033[1;32m✅ urlList.txt created.\033[0m"
           else
             node core/githubTestUrlBuilder.js
-            echo -e "\033[1;33m📂 Listing all files (before checking):\033[0m"
-            find . -type f
             test -f TestURL.js && echo "✅ TestURL.js found" || echo "❌ TestURL.js missing"
           fi
-
-  debug-testurl:
-    needs: build-url-list
-    if: failure()
-    runs-on: ubuntu-22.04
-    steps:
-      - name: 🧪 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 🧪 List files recursively
-        run: |
-          echo -e "\033[1;33m📂 Searching for TestURL.js...\033[0m"
-          find . -name "TestURL.js"
-
-      - name: 🧪 Tree view for debugging
-        run: |
-          echo -e "\033[1;36m📁 Directory structure:\033[0m"
-          tree -a -L 3 || true
-
-  run-lighthouse:
-    needs: build-url-list
-    if: success()
-    runs-on: ubuntu-22.04
-    steps:
-      - name: ⬇️ Checkout Code
-        uses: actions/checkout@v4
 
       - name: 🚀 Run Lighthouse Tests
         run: |
           echo -e "\033[1;36m📡 Starting Lighthouse audit...\033[0m"
+
           if [[ "$MODE" == "4" ]]; then
             echo -e "\033[1;33m🔗 Mode 4 selected — using rawInput via executeGithub.js...\033[0m"
             node executeGithub.js
@@ -131,11 +144,12 @@ jobs:
             echo -e "\033[1;34m🧠 Mode $MODE — using generated TestURL.js via runLighthouseAuto.js...\033[0m"
             node runLighthouseAuto.js
           fi
+
           echo -e "\033[1;32m✅ Lighthouse audit complete.\033[0m"
 
       - name: ⏳ Wait for Reports
         run: |
-          echo -e "\033[1;33m⌛ Sleeping 40s to allow report generation...\033[0m"
+          echo -e "⌛ Sleeping 40s to allow report generation..."
           sleep 40
 
       - name: 📂 Move Reports to Reports_QA
@@ -157,4 +171,4 @@ jobs:
         with:
           name: lighthouse-full-results 
           path: ./.lighthouseci/*
-
+ 
