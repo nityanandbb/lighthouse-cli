@@ -9,6 +9,7 @@ async function run() {
   let urls;
 
   try {
+    
     urls = await main(mode, {
       url: baseUrl,
       selector,
