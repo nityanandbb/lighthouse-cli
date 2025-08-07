@@ -2,6 +2,8 @@
 
 // ✅ This file loads URLs from TestURL.js and runs Lighthouse using those URLs
 const { urls } = require("./TestURL.js");
+console.log("🧪 Loaded URLs:", urls);
+
 const { executeLighthouseCLI } = require("./execution");
 
 if (!urls || !Array.isArray(urls) || urls.length === 0) {
