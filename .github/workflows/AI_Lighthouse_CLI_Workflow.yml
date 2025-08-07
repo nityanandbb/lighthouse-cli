@@ -130,6 +130,7 @@ jobs:
             echo "$RAW_INPUT" | tr ' ' '\n' > urlList.txt
           else
             node core/githubTestUrlBuilder.js
+            test -f TestURL.js && echo "✅ TestURL.js found" || echo "❌ TestURL.js missing"
           fi
 
       - name: 🚀 Run Lighthouse Tests
