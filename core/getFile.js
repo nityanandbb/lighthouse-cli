@@ -17,7 +17,7 @@ const selector = process.env.SELECTOR?.trim();
  */
 
 // Debug code 
-const mode = 1;
+const mode = 1; 
 const baseUrl = "https://www.kotak.com/en";
 const selector = ""; //.header-menu> ul >li > a";
 //

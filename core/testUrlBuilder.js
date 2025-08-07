@@ -1,7 +1,7 @@
-// core/testUrlBuilder.js
+// core/testUrlBuilder.js 
 const { extractWithHoverAndClick } = require("../extractors/hoverAndClick");
 
-const { extractUsingCssSelector } = require("../extractors/cssSelectorMode");
+const { extractUsingCssSelector } = require("../extractors/cssSelectorMode"); 
 const {
   extractUsingXPathSelector,
 } = require("../extractors/xpathSelectorMode");
@@ -46,11 +46,18 @@ async function main(mode, options) {
 
     // ✅ Log the type and result count
     if (Array.isArray(result)) {
-      console.log(`\x1b[32m🎉 Successfully extracted ${result.length} unique URLs.\x1b[0m`);
+      console.log(
+        `\x1b[32m🎉 Successfully extracted ${result.length} unique URLs.\x1b[0m`
+      );
+      console.log(...result); // ✅ Safe to spread here
+      return result;
     } else {
-      console.warn(`\x1b[33m⚠️  Extractor returned unexpected type: ${typeof result}\x1b[0m`);
+      console.warn(
+        `\x1b[33m⚠️  Extractor returned unexpected type: ${typeof result}\x1b[0m`
+      );
+      console.log("Raw result:", result); // ✅ Avoid spread
+      return [];
     }
-    console.log(...result);
     return result;
   } catch (err) {
     console.error("\x1b[31m🔥 Error inside testUrlBuilder main():\x1b[0m", err.message);
@@ -62,3 +69,4 @@ async function main(mode, options) {
 module.exports = {
   main,
 };
+ 
