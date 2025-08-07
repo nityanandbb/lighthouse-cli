@@ -15,7 +15,9 @@ async function extractUsingXPathSelector(baseUrl, xpathSelector) {
       const prop = await el.getProperty("href");
       const href = await prop.jsonValue();
       if (href) hrefs.push(href);
-    } catch {}
+    } catch {
+      // Optional: Log the error if needed
+    }
   }
 
   await browser.close();
@@ -23,6 +25,9 @@ async function extractUsingXPathSelector(baseUrl, xpathSelector) {
   const cleaned = cleanAndFilterLinks(hrefs, baseUrl);
   console.log(`✅ Found ${cleaned.length} links using XPath: ${xpathSelector}`);
   writeToTestFile(cleaned);
+
+  // ✅ Return cleaned links
+  return cleaned;
 }
 
 module.exports = {

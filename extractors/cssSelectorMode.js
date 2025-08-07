@@ -18,6 +18,9 @@ async function extractUsingCssSelector(baseUrl, selector) {
 
   console.log(`✅ Found ${cleaned.length} links using selector: ${selector}`);
   writeToTestFile(cleaned);
+
+  // ✅ Fix: return the cleaned links
+  return cleaned;
 }
 
 module.exports = {
