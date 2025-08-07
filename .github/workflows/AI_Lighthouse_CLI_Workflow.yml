@@ -133,6 +133,24 @@ jobs:
             test -f TestURL.js && echo "✅ TestURL.js found" || echo "❌ TestURL.js missing"
           fi
 
+  debug-testurl:
+    needs: build-url-list
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🧪 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🧪 List files recursively
+        run: |
+          echo -e "\033[1;33m📂 Searching for TestURL.js...\033[0m"
+          find . -name "TestURL.js"
+          
+      - name: 🧪 Tree view for debugging
+        run: |
+          echo -e "\033[1;36m📁 Directory structure:\033[0m"
+          tree -a -L 3 || true
+
       - name: 🚀 Run Lighthouse Tests
         run: |
           echo -e "\033[1;36m📡 Starting Lighthouse audit...\033[0m"
