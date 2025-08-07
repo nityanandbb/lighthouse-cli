@@ -1,57 +1,24 @@
-// core/githubTestUrlBuilder.js
-const fs = require("fs");
-const path = require("path");
-const { main } = require("./testUrlBuilder");
+const { main } = require("./core/testUrlBuilder");
 
 const mode = parseInt(process.env.MODE, 10);
 const baseUrl = process.env.BASE_URL?.trim();
 const selector = process.env.SELECTOR?.trim();
+const rawText = process.env.RAW_TEXT?.trim(); // For mode 4
+const filePath = "./testUrl.js"; // This will be used by `main` internally
 
-async function run() {
-  let urls;
-
+(async () => {
   try {
-    urls = await main(mode, { url: baseUrl, selector });
+    const options = {};
 
-    if (!Array.isArray(urls)) {
-      console.error("❌ Extractor did not return an array. Got:", urls);
-      throw new Error("Extractor did not return an array.");
-    }
+    if (baseUrl) options.url = baseUrl;
+    if (selector) options.selector = selector;
+    if (rawText) options.rawText = rawText;
 
-    const finalURLs = [
-      ...new Set(urls.map((u) => u.trim().replace(/\/$/, ""))),
-    ].filter(Boolean);
+    await main(mode, options, filePath); // let main() handle file creation
 
-    const filePath = path.resolve(process.cwd(), "TestURL.js");
-
-    // 🔹 Log full resolved file path
-    console.log("\n🔹 File will be written to:", filePath);
-
-    // 🔹 Run `ls -a` to show all files (simulate from JS)
-    console.log("\n📂 Listing current directory:");
-    const files = fs.readdirSync(process.cwd(), { withFileTypes: true });
-    files.forEach((f) => console.log("📄", f.name));
-
-    // 🔹 Build file content but delay writing
-    const fileContent = `exports.urls = ${JSON.stringify(
-      finalURLs,
-      null,
-      2
-    )};\n`;
-
-    // 🔹 Log what content will be written
-    console.log("\n📦 Content to be written:\n", fileContent);
-
-    // 🔹 Actually write the file
-    fs.writeFileSync(filePath, fileContent);
-
-    console.log("\n✅ File written successfully.");
-  } catch (err) {
-    console.error("\n❌ Error in main() or extractor:", err.message);
-    console.error(err.stack);
+    console.log(`✅ githubTestUrlBuilder completed for mode ${mode}`);
+  } catch (error) {
+    console.error("❌ Error in githubTestUrlBuilder:", error);
     process.exit(1);
   }
-}
-
-run();
-
+})();

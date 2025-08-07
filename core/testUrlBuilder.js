@@ -46,21 +46,14 @@ async function main(mode, options) {
 
     // ✅ Log the type and result count
     if (Array.isArray(result)) {
-      console.log(
-        `\x1b[32m🎉 Successfully extracted ${result.length} unique URLs.\x1b[0m`
-      );
+      console.log(`\x1b[32m🎉 Successfully extracted ${result.length} unique URLs.\x1b[0m`);
     } else {
-      console.warn(
-        `\x1b[33m⚠️  Extractor returned unexpected type: ${typeof result}\x1b[0m`
-      );
+      console.warn(`\x1b[33m⚠️  Extractor returned unexpected type: ${typeof result}\x1b[0m`);
     }
-
+    console.log(...result);
     return result;
   } catch (err) {
-    console.error(
-      "\x1b[31m🔥 Error inside testUrlBuilder main():\x1b[0m",
-      err.message
-    );
+    console.error("\x1b[31m🔥 Error inside testUrlBuilder main():\x1b[0m", err.message);
     console.error("\x1b[90m", err.stack, "\x1b[0m");
     return [];
   }
