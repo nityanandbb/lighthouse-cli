@@ -23,22 +23,33 @@ async function run() {
     ].filter(Boolean);
 
     const filePath = path.resolve(process.cwd(), "TestURL.js");
-    console.log(`\x1b[1;34m🧪 Writing TestURL.js to:\x1b[0m ${filePath}`);
 
+    // 🔹 Log full resolved file path
+    console.log("\n🔹 File will be written to:", filePath);
 
+    // 🔹 Run `ls -a` to show all files (simulate from JS)
+    console.log("\n📂 Listing current directory:");
+    const files = fs.readdirSync(process.cwd(), { withFileTypes: true });
+    files.forEach((f) => console.log("📄", f.name));
+
+    // 🔹 Build file content but delay writing
     const fileContent = `exports.urls = ${JSON.stringify(
       finalURLs,
       null,
       2
     )};\n`;
+
+    // 🔹 Log what content will be written
+    console.log("\n📦 Content to be written:\n", fileContent);
+
+    // 🔹 Actually write the file
     fs.writeFileSync(filePath, fileContent);
 
-    console.log("✅ File written successfully.");
-    console.log("📄 Contents:\n", fileContent);
+    console.log("\n✅ File written successfully.");
   } catch (err) {
-    console.error("❌ Error in main() or extractor:", err.message);
+    console.error("\n❌ Error in main() or extractor:", err.message);
     console.error(err.stack);
-    process.exit(1); // still exit, but with better logs
+    process.exit(1);
   }
 }
 
