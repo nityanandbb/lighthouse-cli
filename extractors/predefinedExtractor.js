@@ -6,6 +6,7 @@ const advSelectors = require("../core/utils/advSelectors");
 async function extractUsingPredefinedSelectors(page, baseUrl) {
   baseUrl = baseUrl.trim().replace(/\/$/, "");
   const baseOrigin = new URL(baseUrl).origin;
+
   const selectors = [
     "header nav a",
     "nav ul > li > a",
@@ -84,7 +85,7 @@ async function extractUsingPredefinedSelectors(page, baseUrl) {
       }
     }
   }
-  
+
   linkSet.add(baseUrl);
 
   const finalLinks = [...linkSet];
@@ -94,6 +95,8 @@ async function extractUsingPredefinedSelectors(page, baseUrl) {
   finalLinks.forEach((link) => console.log("  ➤", link));
 
   writeToTestFile(finalLinks);
+
+  return finalLinks; // ✅ Critical fix
 }
 
 module.exports = {
