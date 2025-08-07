@@ -12,9 +12,18 @@ console.log("Starting Lighthouse metrics extraction...");
     console.log(`Clearing previous data in ${summaryFilePath}...`);
     fs.writeFileSync(summaryFilePath, JSON.stringify([], null, 2), "utf8");
 
+    // remove after successful work.
+    /*
     const jsonFiles = fs
       .readdirSync(lighthouseDir)
       .filter((file) => file.endsWith(".json")); // Filter JSON report files
+    */
+
+    const jsonFiles = fs.readdirSync(lighthouseDir).filter((file) => {
+      return (
+        file.endsWith(".json") && !file.startsWith("flags-") // Exclude any flags-*.json files
+      );
+    });
 
     if (jsonFiles.length === 0) {
       throw new Error("No JSON Lighthouse reports found in .lighthouseci/.");
