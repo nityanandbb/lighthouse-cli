@@ -1,4 +1,4 @@
-name: Lighthouse CLI Workflow
+name: QA Lighthouse CLI Workflow
 
 on:
   workflow_dispatch:

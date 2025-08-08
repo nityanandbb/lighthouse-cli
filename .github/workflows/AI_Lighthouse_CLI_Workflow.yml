@@ -1,10 +1,10 @@
-name: "🚀 AI + Lighthouse Audit CLI Workflow"
+name: "🚀 AI + Lighthouse Audit CLI Workflow" 
 
 on:
   workflow_dispatch:
     inputs:
       aiAnalysis:
-        description: "🧠 Enable AI Analysis? (yes / no)"
+        description: " 🧠 Enable AI Analysis? (yes / no) "
         required: true
         default: "no"
       mode:

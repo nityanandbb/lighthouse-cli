@@ -1,4 +1,4 @@
-name: "🚀 AI + Lighthouse Audit CLI Workflow"
+name: "🚀 AI Debug in developement"
 
 on:
   workflow_dispatch:
