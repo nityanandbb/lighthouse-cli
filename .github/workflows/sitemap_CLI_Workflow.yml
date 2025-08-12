@@ -1,0 +1,275 @@
+name: " ⛳️ 🗺️ 🚀 Sitemap AI + Lighthouse Audit CLI"
+
+on:
+  workflow_dispatch:
+    inputs:
+      runType:
+        description: "🧭 Pick Run Type"
+        type: choice
+        options:
+          - sitemap
+          - css
+        default: sitemap
+        required: true
+
+      # Sitemap sub-modes (your recipes 1..6)
+      sitemapMode:
+        description: "🗺️ Sitemap: 1=Sample, 2=Only one subpath, 3=StartWith+Includes, 4=Includes+Includes, 5=Includes OR, 6=Multi-domain"
+        type: choice
+        options: ["1","2","3","4","5","6"]
+        default: "1"
+        required: true
+
+      # CSS/XPath sub-modes (your old 1..5)
+      cssMode:
+        description: "🎯 CSS/XPath: 1=Auto(anchors), 2=CSS, 3=XPath, 4=Raw list, 5=All anchors"
+        type: choice
+        options: ["1","2","3","4","5"]
+        default: "2"
+        required: true
+
+      # Common fields
+      baseUrl:
+        description: "🌐 Base URL (required for sitemap and css modes except raw)"
+        default: ""
+        required: false
+      selector:
+        description: "🎯 CSS or XPath selector (required for cssMode 2/3)"
+        default: ""
+        required: false
+      rawInput:
+        description: "📄 Space-separated URLs (cssMode=4)"
+        default: ""
+        required: false
+
+      # Project meta
+      projectName:
+        description: "📦 Project Name"
+        default: "Internal"
+      client:
+        description: "👤 Client Name"
+        default: "Internal"
+      projectManager:
+        description: "🧑‍💼 Project Manager"
+        default: "Kunal"
+      qaManager:
+        description: "🧪 QA Manager"
+        default: "Archana"
+      expectedLoadTime:
+        description: "⏱️ Expected Load Time"
+        default: "3 seconds"
+
+      # Sitemap knobs
+      sitemapPreset:
+        description: "🧩 Preset (50x5, 200x10, or custom)"
+        type: choice
+        options: ["50x5","200x10","custom"]
+        default: "50x5"
+      targetTotal:
+        description: "🎯 Custom target (preset=custom)"
+        default: "50"
+      perGroup:
+        description: "🧱 Custom per-group (preset=custom)"
+        default: "5"
+      startWith:
+        description: "↘️ PATH starts with (OR). e.g. /en/ /services/"
+        default: ""
+      containsAny:
+        description: "🔎 PATH contains ANY (OR). e.g. insights sku_ id"
+        default: ""
+      containsAll:
+        description: "✅ PATH contains ALL (AND). e.g. /en/ /insights/"
+        default: ""
+      exclude:
+        description: "🚫 Exclude prefixes. e.g. /blog/ /news/"
+        default: ""
+      includeRe:
+        description: "🔬 Include regex (PATH)"
+        default: ""
+      excludeRe:
+        description: "🔬 Exclude regex (PATH)"
+        default: ""
+      allowSubdomains:
+        description: "🌍 Allow subdomains of base host?"
+        type: choice
+        options: ["false","true"]
+        default: "false"
+      allowHosts:
+        description: "🌐 Extra hosts (space/comma/newline)"
+        default: ""
+      hostRe:
+        description: "🧪 Host allow regex"
+        default: ""
+      skipValidate:
+        description: "⚡ Skip HTTP validation"
+        type: choice
+        options: ["false","true"]
+        default: "false"
+      concurrency:
+        description: "🚦 Concurrency"
+        default: "8"
+      maxSitemaps:
+        description: "🧱 Max sitemap files"
+        default: "1000"
+      outFile:
+        description: "📄 Output filename"
+        default: "TestURL.js"
+
+jobs:
+  setup-and-execute:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: ⬇️ Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 📦 Install Dependencies
+        run: npm ci
+
+      - name: 🧪 Validate Inputs & Export Env
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo -e "\033[1;34m🔍 Validating Inputs...\033[0m"
+
+          runType="${{ github.event.inputs.runType }}"
+          sitemapMode="${{ github.event.inputs.sitemapMode }}"
+          cssMode="${{ github.event.inputs.cssMode }}"
+          baseUrl="${{ github.event.inputs.baseUrl }}"
+          selector="${{ github.event.inputs.selector }}"
+          rawInput="${{ github.event.inputs.rawInput }}"
+
+          # Map to internal MODE your runners use
+          MODE=""
+          if [[ "$runType" == "sitemap" ]]; then
+            MODE="1"
+          else
+            case "$cssMode" in
+              "1") MODE="5" ;;  # auto → anchors (fallback)
+              "2") MODE="2" ;;  # CSS
+              "3") MODE="3" ;;  # XPath
+              "4") MODE="4" ;;  # Raw
+              "5") MODE="5" ;;  # Anchors
+              *) echo "❌ Invalid cssMode: $cssMode"; exit 1;;
+            esac
+          fi
+
+          # Validate requireds
+          if [[ "$MODE" == "1" && -z "$baseUrl" ]]; then echo "❌ baseUrl required for sitemap"; exit 1; fi
+          if [[ "$MODE" =~ ^(2|3|5)$ && -z "$baseUrl" ]]; then echo "❌ baseUrl required for cssMode $cssMode"; exit 1; fi
+          if [[ "$MODE" == "2" && -z "$selector" ]]; then echo "❌ CSS selector required (cssMode=2)"; exit 1; fi
+          if [[ "$MODE" == "3" && -z "$selector" ]]; then echo "❌ XPath selector required (cssMode=3)"; exit 1; fi
+          if [[ "$MODE" == "4" && -z "$rawInput" ]]; then echo "❌ rawInput required (cssMode=4)"; exit 1; fi
+
+          # Export core env
+          {
+            echo "RUN_TYPE=$runType"
+            echo "SITEMAP_MODE=$sitemapMode"
+            echo "CSS_MODE=$cssMode"
+            echo "MODE=$MODE"
+            echo "BASE_URL=$baseUrl"
+            echo "SELECTOR=$selector"
+            echo "RAW_INPUT=$rawInput"
+            echo "TESTFILES_LIST=$rawInput"
+            # Sitemap knobs
+            echo "SITEMAP_PRESET=${{ github.event.inputs.sitemapPreset }}"
+            echo "TARGET_TOTAL=${{ github.event.inputs.targetTotal }}"
+            echo "PER_GROUP=${{ github.event.inputs.perGroup }}"
+            echo "START_WITH=${{ github.event.inputs.startWith }}"
+            echo "CONTAINS_ANY=${{ github.event.inputs.containsAny }}"
+            echo "CONTAINS_ALL=${{ github.event.inputs.containsAll }}"
+            echo "EXCLUDE=${{ github.event.inputs.exclude }}"
+            echo "INCLUDE_RE=${{ github.event.inputs.includeRe }}"
+            echo "EXCLUDE_RE=${{ github.event.inputs.excludeRe }}"
+            echo "ALLOW_SUBDOMAINS=${{ github.event.inputs.allowSubdomains }}"
+            echo "ALLOW_HOSTS=${{ github.event.inputs.allowHosts }}"
+            echo "HOST_RE=${{ github.event.inputs.hostRe }}"
+            # Perf + out
+            echo "SKIP_VALIDATE=${{ github.event.inputs.skipValidate }}"
+            echo "CONCURRENCY=${{ github.event.inputs.concurrency }}"
+            echo "MAX_SITEMAPS=${{ github.event.inputs.maxSitemaps }}"
+            echo "OUT_FILE=${{ github.event.inputs.outFile }}"
+            # Meta
+            echo "PROJECT_NAME=${{ github.event.inputs.projectName }}"
+            echo "CLIENT=${{ github.event.inputs.client }}"
+            echo "PROJECT_MANAGER=${{ github.event.inputs.projectManager }}"
+            echo "QA_MANAGER=${{ github.event.inputs.qaManager }}"
+            echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}"
+          } >> "$GITHUB_ENV"
+
+          echo -e "\033[1;32m✅ Inputs OK.\033[0m"
+          echo "🧭 runType=$runType | MODE=$MODE"
+          echo "🌐 baseUrl=$baseUrl"
+          echo "🎯 selector=$selector"
+          echo "cssMode=$cssMode | sitemapMode=$sitemapMode"
+
+      - name: 📦 Install Puppeteer for CSS/XPath/Anchors
+        if: ${{ env.MODE == '2' || env.MODE == '3' || env.MODE == '5' }}
+        run: npm i puppeteer
+
+      - name: 🔧 Prepare URL List
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo -e "\033[1;34m🔧 Building URL list...\033[0m"
+
+          if [[ "$MODE" == "4" ]]; then
+            # Raw list
+            echo "$RAW_INPUT" | tr ' ' '\n' > urlList.txt
+            node -e 'const fs=require("fs");const u=String(process.env.RAW_INPUT||"").split(/[ \n]+/).filter(Boolean);fs.writeFileSync("TestURL.js","exports.urls = "+JSON.stringify(u,null,2)+";\\n")'
+            test -f TestURL.js && echo "✅ TestURL.js from raw input" || (echo "❌ TestURL.js missing" && exit 1)
+
+          elif [[ "$MODE" == "1" ]]; then
+            # Sitemap (new helper)
+            node core/sitemapUrlBuilder.js
+            if [[ "$OUT_FILE" != "TestURL.js" && -f "$OUT_FILE" ]]; then cp "$OUT_FILE" TestURL.js; fi
+            test -f "${OUT_FILE}" && echo "✅ ${OUT_FILE} found" || (echo "❌ ${OUT_FILE} missing" && exit 1)
+
+          else
+            # Your OLD builder for CSS/XPath/Anchors
+            node core/githubTestUrlBuilder.js
+            test -f TestURL.js && echo "✅ TestURL.js found" || (echo "❌ TestURL.js missing" && exit 1)
+          fi
+
+      - name: 🚀 Run Lighthouse Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo -e "\033[1;36m📡 Starting Lighthouse...\033[0m"
+          if [[ "$MODE" == "4" ]]; then
+            echo -e "\033[1;33m🔗 Raw list (MODE=4) — executeGithub.js\033[0m"
+            node executeGithub.js
+          else
+            echo -e "\033[1;34m🧠 MODE $MODE — runLighthouseAuto.js (reads TestURL.js)\033[0m"
+            node runLighthouseAuto.js
+          fi
+          echo -e "\033[1;32m✅ Lighthouse complete.\033[0m"
+
+      - name: ⏳ Wait for Reports
+        run: |
+          echo -e "⌛ Sleeping 40s to allow report generation..."
+          sleep 40
+
+      - name: 📂 Move Reports to Reports_QA
+        run: |
+          mkdir -p ./Reports_QA
+          mv *.html ./Reports_QA/ 2>/dev/null || true
+          mv *.pdf ./Reports_QA/ 2>/dev/null || true
+          mv ./results/*.csv ./Reports_QA/ 2>/dev/null || true
+          echo -e "\033[1;32m✅ Reports moved to Reports_QA\033[0m"
+
+      - name: 📤 Upload Reports as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-csv-html-reports
+          path: ./Reports_QA/*
+
+      - name: 📦 Upload Lighthouse Full Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-full-results
+          path: ./.lighthouseci/*
