@@ -1,0 +1,185 @@
+name: "⛳️ 🗺️ 🚀 Sitemap Lighthouse (Sitemap-only)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      # 1
+      baseUrl:
+        description: "🌐 Base URL (required). Example: https://www.example.com"
+        default: ""
+        required: true
+
+      # 2
+      sitemapMode:
+        description: "🗺️ Sitemap mode — 1:Sample  2:Only subpath  3:StartWith+Contains  4:Contains+Contains  5:Contains OR  6:Multi-domain"
+        type: choice
+        options: ["1","2","3","4","5","6"]
+        default: "1"
+        required: true
+
+      # 3
+      sitemapPreset:
+        description: "🧩 Sample preset (50x5, 200x10, or custom=100x10 fallback)"
+        type: choice
+        options: ["50x5","200x10","custom"]
+        default: "50x5"
+
+      # 4
+      startWith:
+        description: "↘️ PATH starts with (OR). e.g. /en/ /services/"
+        default: ""
+
+      # 5
+      containsAny:
+        description: "🔎 PATH contains ANY (OR). e.g. insights careers products"
+        default: ""
+
+      # 6
+      exclude:
+        description: "🚫 Exclude prefixes. e.g. /blog/ /news/"
+        default: ""
+
+      # ---- Project meta (4 inputs to stay within the 10-input cap) ----
+      # 7
+      projectName:
+        description: "📦 Project Name"
+        default: "Internal"
+      # 8
+      client:
+        description: "👤 Client Name"
+        default: "Internal"
+      # 9
+      projectManager:
+        description: "🧑‍💼 Project Manager"
+        default: "Kunal"
+      # 10
+      qaManager:
+        description: "🧪 QA Manager"
+        default: "Archana"
+
+jobs:
+  sitemap-run:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: ⬇️ Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 📦 Install Dependencies
+        run: npm ci
+
+      - name: 🧪 Validate Inputs & Export Env
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo -e "\033[1;34m🔍 Validating Inputs...\033[0m"
+
+          baseUrl="${{ github.event.inputs.baseUrl }}"
+          sitemapMode="${{ github.event.inputs.sitemapMode }}"
+          sitemapPreset="${{ github.event.inputs.sitemapPreset }}"
+          startWith="${{ github.event.inputs.startWith }}"
+          containsAny="${{ github.event.inputs.containsAny }}"
+          exclude="${{ github.event.inputs.exclude }}"
+
+          projectName="${{ github.event.inputs.projectName }}"
+          client="${{ github.event.inputs.client }}"
+          projectManager="${{ github.event.inputs.projectManager }}"
+          qaManager="${{ github.event.inputs.qaManager }}"
+
+          # Required
+          if [[ -z "$baseUrl" ]]; then
+            echo "❌ baseUrl is required."; exit 1;
+          fi
+
+          # MODE is always 1 for sitemap workflow
+          MODE="1"
+          echo "MODE=$MODE" >> "$GITHUB_ENV"
+
+          # Sitemap preset → caps
+          case "$sitemapPreset" in
+            "50x5")  TARGET_TOTAL=50;  PER_GROUP=5  ;;
+            "200x10") TARGET_TOTAL=200; PER_GROUP=10 ;;
+            "custom") TARGET_TOTAL=100; PER_GROUP=10 ;;  # fallback numbers (kept simple to meet 10-input limit)
+          esac
+
+          {
+            echo "BASE_URL=$baseUrl"
+            echo "SITEMAP_MODE=$sitemapMode"
+            echo "SITEMAP_PRESET=$sitemapPreset"
+            echo "TARGET_TOTAL=$TARGET_TOTAL"
+            echo "PER_GROUP=$PER_GROUP"
+
+            # Filters (kept to 3 most-used to fit 10-input cap)
+            echo "START_WITH=$startWith"
+            echo "CONTAINS_ANY=$containsAny"
+            echo "EXCLUDE=$exclude"
+
+            # Reasonable defaults (you can edit these constants if needed)
+            echo "CONTAINS_ALL="              # intentionally omitted to stay under 10 inputs
+            echo "INCLUDE_RE="
+            echo "EXCLUDE_RE="
+            echo "ALLOW_SUBDOMAINS=false"
+            echo "ALLOW_HOSTS="
+            echo "HOST_RE="
+            echo "SKIP_VALIDATE=false"
+            echo "CONCURRENCY=8"
+            echo "MAX_SITEMAPS=1000"
+
+            # Project meta (Expected Load Time defaulted here to keep inputs <= 10)
+            echo "PROJECT_NAME=$projectName"
+            echo "CLIENT=$client"
+            echo "PROJECT_MANAGER=$projectManager"
+            echo "QA_MANAGER=$qaManager"
+            echo "EXPECTED_LOAD_TIME=3 seconds"
+          } >> "$GITHUB_ENV"
+
+          echo -e "\033[1;32m✅ Inputs OK\033[0m"
+          echo "🌐 baseUrl=$baseUrl | 🗺️ mode=$sitemapMode | 🧩 preset=$sitemapPreset"
+          echo "↘️ startWith='$startWith' | 🔎 containsAny='$containsAny' | 🚫 exclude='$exclude'"
+          echo "📦 $projectName | 👤 $client | 🧑‍💼 $projectManager | 🧪 $qaManager"
+
+      - name: 🔧 Prepare URL List (Sitemap)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo -e "\033[1;34m🔧 Building URL list from sitemap...\033[0m"
+          node core/sitemapUrlBuilder.js
+          test -f "TestURL.js" && echo "✅ TestURL.js ready" || (echo "❌ TestURL.js missing" && exit 1)
+
+      - name: 🚀 Run Lighthouse Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo -e "\033[1;36m📡 Starting Lighthouse...\033[0m"
+          node runLighthouseAuto.js
+          echo -e "\033[1;32m✅ Lighthouse complete.\033[0m"
+
+      - name: ⏳ Wait for Reports
+        run: |
+          echo -e "⌛ Sleeping 40s to allow report generation..."
+          sleep 40
+
+      - name: 📂 Move Reports to Reports_QA
+        run: |
+          mkdir -p ./Reports_QA
+          mv *.html ./Reports_QA/ 2>/dev/null || true
+          mv *.pdf ./Reports_QA/ 2>/dev/null || true
+          mv ./results/*.csv ./Reports_QA/ 2>/dev/null || true
+          echo -e "\033[1;32m✅ Reports moved to Reports_QA\033[0m"
+
+      - name: 📤 Upload Reports as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sitemap-lighthouse-reports
+          path: ./Reports_QA/*
+
+      - name: 📦 Upload Lighthouse Full Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-full-results
+          path: ./.lighthouseci/*
