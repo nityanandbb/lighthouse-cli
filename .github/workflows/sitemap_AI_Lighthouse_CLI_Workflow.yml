@@ -1,76 +1,43 @@
-name: " ⛳️ 🗺️ 🚀 Sitemap AI + Lighthouse Audit CLI"
+name: "⛳️ 🗺️ 🚀 Sitemap AI + Lighthouse Audit CLI"
 
 on:
   workflow_dispatch:
     inputs:
+      # ====== Run selector ======
       runType:
-        description: "🧭 Pick Run Type"
+        description: "🧭 What do you want to run?"
         type: choice
-        options:
-          - sitemap
-          - css
-        default: sitemap
+        options: [ "sitemap", "css" ]
+        default: "sitemap"
         required: true
 
-      # Sitemap sub-modes (your recipes 1..6)
+      # ====== Base URL (shown first; required) ======
+      baseUrl:
+        description: "🌐 Base URL (Sitemap, CSS 1/2/3/5). Example: https://www.example.com"
+        default: ""
+        required: true
+
+      # ====== Sitemap section ======
       sitemapMode:
-        description: "🗺️ Sitemap: 1=Sample, 2=Only one subpath, 3=StartWith+Includes, 4=Includes+Includes, 5=Includes OR, 6=Multi-domain"
+        description: "🗺️ Sitemap mode — 1:Sample  2:Only subpath  3:StartWith+Contains  4:Contains+Contains  5:Contains OR  6:Multi-domain"
         type: choice
         options: ["1","2","3","4","5","6"]
         default: "1"
         required: true
 
-      # CSS/XPath sub-modes (your old 1..5)
-      cssMode:
-        description: "🎯 CSS/XPath: 1=Auto(anchors), 2=CSS, 3=XPath, 4=Raw list, 5=All anchors"
-        type: choice
-        options: ["1","2","3","4","5"]
-        default: "2"
-        required: true
-
-      # Common fields
-      baseUrl:
-        description: "🌐 Base URL (required for sitemap and css modes except raw)"
-        default: ""
-        required: false
-      selector:
-        description: "🎯 CSS or XPath selector (required for cssMode 2/3)"
-        default: ""
-        required: false
-      rawInput:
-        description: "📄 Space-separated URLs (cssMode=4)"
-        default: ""
-        required: false
-
-      # Project meta
-      projectName:
-        description: "📦 Project Name"
-        default: "Internal"
-      client:
-        description: "👤 Client Name"
-        default: "Internal"
-      projectManager:
-        description: "🧑‍💼 Project Manager"
-        default: "Kunal"
-      qaManager:
-        description: "🧪 QA Manager"
-        default: "Archana"
-      expectedLoadTime:
-        description: "⏱️ Expected Load Time"
-        default: "3 seconds"
-
-      # Sitemap knobs
       sitemapPreset:
-        description: "🧩 Preset (50x5, 200x10, or custom)"
+        description: "🧩 Sample preset"
         type: choice
-        options: ["50x5","200x10","custom"]
+        options: [ "50x5", "200x10", "custom" ]
         default: "50x5"
       targetTotal:
-        description: "🎯 Custom target (preset=custom)"
+        description: "🎯 Custom target (when preset=custom)"
         default: "50"
       perGroup:
-        description: "🧱 Custom per-group (preset=custom)"
+        description: "🧱 Custom per-group (when preset=custom)"
         default: "5"
+
+      # Filters for sitemap modes 2–6 (optional)
       startWith:
         description: "↘️ PATH starts with (OR). e.g. /en/ /services/"
         default: ""
@@ -89,35 +56,83 @@ on:
       excludeRe:
         description: "🔬 Exclude regex (PATH)"
         default: ""
+
+      # Host rules (global brands; sitemap mode 6)
       allowSubdomains:
         description: "🌍 Allow subdomains of base host?"
         type: choice
-        options: ["false","true"]
+        options: [ "false", "true" ]
         default: "false"
       allowHosts:
-        description: "🌐 Extra hosts (space/comma/newline)"
+        description: "🌐 Extra hosts (space/comma/newline). e.g. api.example.com media.example.com"
         default: ""
       hostRe:
-        description: "🧪 Host allow regex"
+        description: "🧪 Host allow regex. e.g. .*\\.brand\\.(com|co\\.uk|de)$"
         default: ""
+
+      # Performance (sitemap traversal)
       skipValidate:
-        description: "⚡ Skip HTTP validation"
+        description: "⚡ Skip HTTP 200 validation (faster)"
         type: choice
-        options: ["false","true"]
+        options: [ "false", "true" ]
         default: "false"
       concurrency:
-        description: "🚦 Concurrency"
+        description: "🚦 Concurrency (8–16 typical)"
         default: "8"
       maxSitemaps:
-        description: "🧱 Max sitemap files"
+        description: "🧱 Max sitemap files to traverse"
         default: "1000"
-      outFile:
-        description: "📄 Output filename"
-        default: "TestURL.js"
+
+      # ====== CSS/XPath runner section ======
+      cssMode:
+        description: "🎯 CSS/XPath — 1:Auto(anchors)  2:CSS  3:XPath  4:Raw list  5:All anchors"
+        type: choice
+        options: ["1","2","3","4","5"]
+        default: "2"
+        required: true
+      selector:
+        description: "🎯 CSS/XPath selector (required for cssMode=2/3)"
+        default: ""
+        required: false
+
+      # Handy presets that autofill 'selector' if left blank
+      cssPreset:
+        description: "🔧 CSS preset (optional; fills 'selector' if empty)"
+        type: choice
+        options:
+          - ""
+          - "Nav links (.nav a)"
+          - "Footer links (footer a)"
+          - "Article links (.article a)"
+          - "Buttons (a.button)"
+          - "All anchors (a[href])"
+        default: ""
+
+      rawInput:
+        description: "📄 Space-separated URLs (required for cssMode=4)"
+        default: ""
+        required: false
+
+      # ====== Project meta ======
+      projectName:    { description: "📦 Project Name",     default: "Internal" }
+      client:         { description: "👤 Client Name",      default: "Internal" }
+      projectManager: { description: "🧑‍💼 Project Manager", default: "Kunal" }
+      qaManager:      { description: "🧪 QA Manager",       default: "Archana" }
+      expectedLoadTime:
+        description: "⏱️ Expected Load Time"
+        default: "3 seconds"
+
+      # ====== Help toggle ======
+      showHelp:
+        description: "📖 Print quick examples in job logs?"
+        type: choice
+        options: [ "false", "true" ]
+        default: "false"
 
 jobs:
   setup-and-execute:
     runs-on: ubuntu-22.04
+
     steps:
       - name: ⬇️ Checkout Code
         uses: actions/checkout@v4
@@ -137,45 +152,63 @@ jobs:
           echo -e "\033[1;34m🔍 Validating Inputs...\033[0m"
 
           runType="${{ github.event.inputs.runType }}"
+          baseUrl="${{ github.event.inputs.baseUrl }}"
           sitemapMode="${{ github.event.inputs.sitemapMode }}"
           cssMode="${{ github.event.inputs.cssMode }}"
-          baseUrl="${{ github.event.inputs.baseUrl }}"
           selector="${{ github.event.inputs.selector }}"
+          cssPreset="${{ github.event.inputs.cssPreset }}"
           rawInput="${{ github.event.inputs.rawInput }}"
+          showHelp="${{ github.event.inputs.showHelp }}"
 
-          # Map to internal MODE your runners use
-          MODE=""
+          # Simple booleans for clarity
           if [[ "$runType" == "sitemap" ]]; then
+            echo "RUN_SITEMAP=true" >> "$GITHUB_ENV"
+            echo "RUN_CSS=false" >> "$GITHUB_ENV"
             MODE="1"
           else
+            echo "RUN_SITEMAP=false" >> "$GITHUB_ENV"
+            echo "RUN_CSS=true" >> "$GITHUB_ENV"
             case "$cssMode" in
-              "1") MODE="5" ;;  # auto → anchors (fallback)
+              "1") MODE="5" ;;  # auto → anchors
               "2") MODE="2" ;;  # CSS
               "3") MODE="3" ;;  # XPath
               "4") MODE="4" ;;  # Raw
               "5") MODE="5" ;;  # Anchors
-              *) echo "❌ Invalid cssMode: $cssMode"; exit 1;;
+              *) echo "❌ Invalid cssMode: $cssMode"; exit 1 ;;
             esac
           fi
 
-          # Validate requireds
-          if [[ "$MODE" == "1" && -z "$baseUrl" ]]; then echo "❌ baseUrl required for sitemap"; exit 1; fi
-          if [[ "$MODE" =~ ^(2|3|5)$ && -z "$baseUrl" ]]; then echo "❌ baseUrl required for cssMode $cssMode"; exit 1; fi
+          # Base URL required unless cssMode=4 (raw)
+          if [[ "$MODE" != "4" && -z "$baseUrl" ]]; then
+            echo "❌ baseUrl is required."; exit 1;
+          fi
+
+          # If selector empty, apply preset (only for CSS modes)
+          if [[ -z "$selector" && "$MODE" == "2" ]]; then
+            case "$cssPreset" in
+              "Nav links (.nav a)") selector=".nav a" ;;
+              "Footer links (footer a)") selector="footer a" ;;
+              "Article links (.article a)") selector=".article a" ;;
+              "Buttons (a.button)") selector="a.button" ;;
+              "All anchors (a[href])") selector="a[href]" ;;
+            esac
+          fi
+
+          # Validate CSS specifics
           if [[ "$MODE" == "2" && -z "$selector" ]]; then echo "❌ CSS selector required (cssMode=2)"; exit 1; fi
           if [[ "$MODE" == "3" && -z "$selector" ]]; then echo "❌ XPath selector required (cssMode=3)"; exit 1; fi
           if [[ "$MODE" == "4" && -z "$rawInput" ]]; then echo "❌ rawInput required (cssMode=4)"; exit 1; fi
 
-          # Export core env
+          # Export env for builders/runners
           {
-            echo "RUN_TYPE=$runType"
-            echo "SITEMAP_MODE=$sitemapMode"
-            echo "CSS_MODE=$cssMode"
             echo "MODE=$MODE"
             echo "BASE_URL=$baseUrl"
             echo "SELECTOR=$selector"
             echo "RAW_INPUT=$rawInput"
             echo "TESTFILES_LIST=$rawInput"
-            # Sitemap knobs
+
+            # Sitemap knobs & filters
+            echo "SITEMAP_MODE=${{ github.event.inputs.sitemapMode }}"
             echo "SITEMAP_PRESET=${{ github.event.inputs.sitemapPreset }}"
             echo "TARGET_TOTAL=${{ github.event.inputs.targetTotal }}"
             echo "PER_GROUP=${{ github.event.inputs.perGroup }}"
@@ -188,11 +221,10 @@ jobs:
             echo "ALLOW_SUBDOMAINS=${{ github.event.inputs.allowSubdomains }}"
             echo "ALLOW_HOSTS=${{ github.event.inputs.allowHosts }}"
             echo "HOST_RE=${{ github.event.inputs.hostRe }}"
-            # Perf + out
             echo "SKIP_VALIDATE=${{ github.event.inputs.skipValidate }}"
             echo "CONCURRENCY=${{ github.event.inputs.concurrency }}"
             echo "MAX_SITEMAPS=${{ github.event.inputs.maxSitemaps }}"
-            echo "OUT_FILE=${{ github.event.inputs.outFile }}"
+
             # Meta
             echo "PROJECT_NAME=${{ github.event.inputs.projectName }}"
             echo "CLIENT=${{ github.event.inputs.client }}"
@@ -201,14 +233,31 @@ jobs:
             echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}"
           } >> "$GITHUB_ENV"
 
-          echo -e "\033[1;32m✅ Inputs OK.\033[0m"
-          echo "🧭 runType=$runType | MODE=$MODE"
-          echo "🌐 baseUrl=$baseUrl"
-          echo "🎯 selector=$selector"
-          echo "cssMode=$cssMode | sitemapMode=$sitemapMode"
+          echo -e "\033[1;32m✅ Inputs OK\033[0m"
+          echo "🔁 runType=$runType | RUN_SITEMAP=$RUN_SITEMAP | RUN_CSS=$RUN_CSS | MODE=$MODE"
+          echo "🌐 baseUrl=$baseUrl | cssMode=$cssMode | sitemapMode=$sitemapMode | selector='${selector:-N/A}'"
+
+          # Optional helper text in logs
+          if [[ "$showHelp" == "true" ]]; then
+            echo ""
+            echo "📖 QUICK EXAMPLES (SITEMAP)"
+            echo "1) Sample (50x5 or 200x10): set preset, no filters."
+            echo "2) Only subpath: startWith='/services/'"
+            echo "3) StartWith+Contains: startWith='/en/' containsAny='insights'"
+            echo "4) Contains+Contains: containsAll='/en/ /insights/'"
+            echo "5) Contains OR: containsAny='services careers products'"
+            echo "6) Multi-domain: allowSubdomains='true' or hostRe='.*\\.brand\\.(com|co\\.uk)$'"
+            echo ""
+            echo "📖 QUICK EXAMPLES (CSS)"
+            echo "2) CSS: selector='.nav a' (or use cssPreset)"
+            echo "3) XPath: selector='//a[@href]'"
+            echo "5) Anchors: cssMode=5"
+            echo "4) Raw: paste URLs into 'rawInput'"
+            echo ""
+          fi
 
       - name: 📦 Install Puppeteer for CSS/XPath/Anchors
-        if: ${{ env.MODE == '2' || env.MODE == '3' || env.MODE == '5' }}
+        if: ${{ env.RUN_CSS == 'true' && (env.MODE == '2' || env.MODE == '3' || env.MODE == '5') }}
         run: npm i puppeteer
 
       - name: 🔧 Prepare URL List
@@ -223,16 +272,15 @@ jobs:
             node -e 'const fs=require("fs");const u=String(process.env.RAW_INPUT||"").split(/[ \n]+/).filter(Boolean);fs.writeFileSync("TestURL.js","exports.urls = "+JSON.stringify(u,null,2)+";\\n")'
             test -f TestURL.js && echo "✅ TestURL.js from raw input" || (echo "❌ TestURL.js missing" && exit 1)
 
-          elif [[ "$MODE" == "1" ]]; then
-            # Sitemap (new helper)
+          elif [[ "$RUN_SITEMAP" == "true" ]]; then
+            # Mode 1 — sitemap (dedicated helper; your existing code untouched)
             node core/sitemapUrlBuilder.js
-            if [[ "$OUT_FILE" != "TestURL.js" && -f "$OUT_FILE" ]]; then cp "$OUT_FILE" TestURL.js; fi
-            test -f "${OUT_FILE}" && echo "✅ ${OUT_FILE} found" || (echo "❌ ${OUT_FILE} missing" && exit 1)
+            test -f "TestURL.js" && echo "✅ TestURL.js from sitemap" || (echo "❌ TestURL.js missing" && exit 1)
 
           else
-            # Your OLD builder for CSS/XPath/Anchors
+            # CSS/XPath/Anchors via your existing builder
             node core/githubTestUrlBuilder.js
-            test -f TestURL.js && echo "✅ TestURL.js found" || (echo "❌ TestURL.js missing" && exit 1)
+            test -f "TestURL.js" && echo "✅ TestURL.js from CSS runner" || (echo "❌ TestURL.js missing" && exit 1)
           fi
 
       - name: 🚀 Run Lighthouse Tests
@@ -241,7 +289,7 @@ jobs:
           set -euo pipefail
           echo -e "\033[1;36m📡 Starting Lighthouse...\033[0m"
           if [[ "$MODE" == "4" ]]; then
-            echo -e "\033[1;33m🔗 Raw list (MODE=4) — executeGithub.js\033[0m"
+            echo -e "\033[1;33m🔗 Raw list — executeGithub.js\033[0m"
             node executeGithub.js
           else
             echo -e "\033[1;34m🧠 MODE $MODE — runLighthouseAuto.js (reads TestURL.js)\033[0m"
