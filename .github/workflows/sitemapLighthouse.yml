@@ -9,48 +9,47 @@ on:
         default: ""
         required: true
 
-      # 2
+      # 2  (descriptive labels; we parse the leading number at runtime)
       sitemapMode:
-        description: |
-          🗺️ Sitemap mode (choose a number):
-          1 → Sample — Selects URLs directly from the global sitemap (quick check; sampling applies).
-          2 → Only subpath — Include URLs that START WITH given paths. Ex: /products/ /services/
-          3 → StartWith+Contains — Must START WITH given path AND CONTAIN any keywords.
-          4 → Contains+Contains — Must CONTAIN keywords from two lists (AND logic across lists).
-          5 → Contains OR — Must CONTAIN ANY of the keywords (OR logic).
-          6 → Multi-domain — Crawl multiple domains' sitemaps and unify results.
+        description: "🗺️ Choose sitemap mode"
         type: choice
-        options: ["1","2","3","4","5","6"]
-        default: "1"
+        options:
+          - "1 — Sample (global sitemap) — e.g. auto-pick from /sitemap.xml, preset 50x5"
+          - "2 — Only subpath (starts with) — e.g. /services/ /products/"
+          - "3 — StartWith + Contains — e.g. start: /en/  contains: careers insights"
+          - "4 — Contains + Contains — e.g. contains: products  AND contains: pricing"
+          - "5 — Contains OR — e.g. contains any: blog careers jobs"
+          - "6 — Multi-domain — e.g. example.com site2.com"
+        default: "1 — Sample (global sitemap) — e.g. auto-pick from /sitemap.xml, preset 50x5"
         required: true
 
-      # 3
+      # 3  (NxG where N=URLs per group, G=#groups cap)
       sitemapPreset:
         description: |
-          🧩 Sample preset
-          Format NxG → N = total URL cap, G = per‑group cap (groups = path buckets like /products/, /careers/, /en/).
-          Examples: 50x5 ⇒ up to 50 URLs total, max 5 from each group. 200x10 ⇒ up to 200 total, max 10/group.
-          If you choose 'custom', we fallback to 100x10 here (kept simple to stay within 10-input limit).
+          🧩 Sample preset — NxG (N = URLs per group, G = #groups cap).
+          Example: 30x2 ⇒ take up to 30 from each of 2 groups ⇒ ~60 total.
         type: choice
-        options: ["50x5","200x10","custom"]
-        default: "50x5"
+        options: ["30x1","50x1","100x2","200x4","500x5","1000x10","custom"]
+        default: "30x1"
+        required: true
 
-      # 4
+      # 4  (shown regardless; GitHub can't conditionally show)
+      customSample:
+        description: "✍️ If preset = 'custom': enter NxG (e.g., 75x5). N=per group, G=#groups."
+        default: "50x5"
+        required: false
+
+      # 5
       startWith:
         description: "↘️ PATH starts with (OR). e.g. /en/ /services/ (Modes 2 & 3)"
         default: ""
 
-      # 5
+      # 6
       containsAny:
         description: "🔎 PATH contains ANY (OR). e.g. insights careers products (Modes 3 & 5)"
         default: ""
 
-      # 6
-      exclude:
-        description: "🚫 Exclude prefixes. e.g. /blog/ /news/"
-        default: ""
-
-      # ---- Project meta (4 inputs to stay within the 10-input cap) ----
+      # ---- Project meta (keep within 10-input cap) ----
       # 7
       projectName:
         description: "📦 Project Name"
@@ -81,7 +80,7 @@ jobs:
         with:
           node-version: "^18.3 || ^20.18.1"
 
-      - name: 📦 Install Dependencies 
+      - name: 📦 Install Dependencies
         run: npm install
 
       - name: 🧪 Validate Inputs & Export Env
@@ -94,47 +93,71 @@ jobs:
           baseUrl="${{ github.event.inputs.baseUrl }}"
           sitemapMode="${{ github.event.inputs.sitemapMode }}"
           sitemapPreset="${{ github.event.inputs.sitemapPreset }}"
+          customSample="${{ github.event.inputs.customSample }}"
           startWith="${{ github.event.inputs.startWith }}"
           containsAny="${{ github.event.inputs.containsAny }}"
-          exclude="${{ github.event.inputs.exclude }}"
 
           projectName="${{ github.event.inputs.projectName }}"
           client="${{ github.event.inputs.client }}"
           projectManager="${{ github.event.inputs.projectManager }}"
           qaManager="${{ github.event.inputs.qaManager }}"
 
-          # Required
+          # Required: baseUrl
           if [[ -z "$baseUrl" ]]; then
             echo -e "${RED}❌ Input error:${NC} baseUrl is required (e.g., https://www.example.com)"
             exit 1
           fi
 
-          # MODE is always 1 for sitemap workflow (kept as-is)
-          MODE="1"
-          echo "MODE=$MODE" >> "$GITHUB_ENV"
+          # Parse leading number from descriptive mode option (e.g., "1 — Sample ...")
+          MODE_NUM=""
+          if [[ "$sitemapMode" =~ ^[[:space:]]*([0-9]+) ]]; then
+            MODE_NUM="${BASH_REMATCH[1]}"
+          else
+            echo -e "${RED}❌ Input error:${NC} sitemapMode must start with a number 1..6"
+            exit 1
+          fi
 
-          # Sitemap preset → caps (kept as-is, with clear colored logs)
-          case "$sitemapPreset" in
-            "50x5")   TARGET_TOTAL=50;  PER_GROUP=5  ;;
-            "200x10") TARGET_TOTAL=200; PER_GROUP=10 ;;
-            "custom") TARGET_TOTAL=100; PER_GROUP=10 ;;  # fallback numbers (kept simple to meet 10-input limit)
-            *) echo -e "${RED}❌ Invalid sitemapPreset:${NC} '$sitemapPreset'"; exit 1 ;;
-          esac
+          # Keep your previous behavior: MODE fixed to 1 for sitemap-only runner
+          MODE="1"
+
+          # Resolve NxG (N=URLs per group, G=#groups cap)
+          SAMPLE_STR="$sitemapPreset"
+          if [[ "$sitemapPreset" == "custom" ]]; then
+            SAMPLE_STR="$customSample"
+          fi
+
+          # Accept "100 X 2", "100x2", "  100  x  2 "
+          if [[ ! "$SAMPLE_STR" =~ ^[[:space:]]*[0-9]+[[:space:]]*[xX][[:space:]]*[0-9]+[[:space:]]*$ ]]; then
+            echo -e "${RED}❌ Invalid NxG format:${NC} '$SAMPLE_STR'  Use e.g., 75x5"
+            exit 1
+          fi
+
+          NORM="$(echo "$SAMPLE_STR" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
+          MAX_PER_GROUP="${NORM%x*}"
+          MAX_GROUPS="${NORM#*x}"
+          if (( MAX_PER_GROUP < 1 || MAX_GROUPS < 1 )); then
+            echo -e "${RED}❌ NxG numbers must be >= 1${NC}"
+            exit 1
+          fi
+          MAX_TOTAL=$(( MAX_PER_GROUP * MAX_GROUPS ))
 
           {
             echo "BASE_URL=$baseUrl"
-            echo "SITEMAP_MODE=$sitemapMode"
-            echo "SITEMAP_PRESET=$sitemapPreset"
-            echo "TARGET_TOTAL=$TARGET_TOTAL"
-            echo "PER_GROUP=$PER_GROUP"
+            echo "SITEMAP_MODE_LABEL=$sitemapMode"
+            echo "SITEMAP_MODE_NUM=$MODE_NUM"
+            echo "MODE=$MODE"
 
-            # Filters (kept to 3 most-used to fit 10-input cap)
+            echo "SITEMAP_PRESET=$sitemapPreset"
+            echo "CUSTOM_SAMPLE=$customSample"
+            echo "MAX_PER_GROUP=$MAX_PER_GROUP"
+            echo "MAX_GROUPS=$MAX_GROUPS"
+            echo "MAX_TOTAL=$MAX_TOTAL"
+
             echo "START_WITH=$startWith"
             echo "CONTAINS_ANY=$containsAny"
-            echo "EXCLUDE=$exclude"
 
-            # Reasonable defaults (you can edit these constants if needed)
-            echo "CONTAINS_ALL="              # intentionally omitted to stay under 10 inputs
+            # Defaults (unchanged)
+            echo "CONTAINS_ALL="
             echo "INCLUDE_RE="
             echo "EXCLUDE_RE="
             echo "ALLOW_SUBDOMAINS=false"
@@ -144,7 +167,6 @@ jobs:
             echo "CONCURRENCY=8"
             echo "MAX_SITEMAPS=1000"
 
-            # Project meta (Expected Load Time defaulted here to keep inputs <= 10)
             echo "PROJECT_NAME=$projectName"
             echo "CLIENT=$client"
             echo "PROJECT_MANAGER=$projectManager"
@@ -153,8 +175,9 @@ jobs:
           } >> "$GITHUB_ENV"
 
           echo -e "${GREEN}✅ Inputs OK${NC}"
-          echo -e "${YELLOW}ℹ️  Summary:${NC} 🌐 baseUrl=$baseUrl | 🗺️ mode=$sitemapMode | 🧩 preset=$sitemapPreset"
-          echo -e "   ↘️ startWith='${startWith}' | 🔎 containsAny='${containsAny}' | 🚫 exclude='${exclude}'"
+          echo -e "${YELLOW}ℹ️ Summary:${NC} 🌐 baseUrl=$baseUrl | 🗺️ mode='$sitemapMode' (num=$MODE_NUM)"
+          echo -e "   🧩 preset=$sitemapPreset → ${MAX_PER_GROUP}/group × ${MAX_GROUPS} groups ≈ cap ${MAX_TOTAL}"
+          echo -e "   ↘️ startWith='${startWith}' | 🔎 containsAny='${containsAny}'"
           echo -e "   📦 $projectName | 👤 $client | 🧑‍💼 $projectManager | 🧪 $qaManager"
 
       - name: 🔧 Prepare URL List (Sitemap)
