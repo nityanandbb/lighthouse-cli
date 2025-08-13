@@ -11,7 +11,14 @@ on:
 
       # 2
       sitemapMode:
-        description: "🗺️ Sitemap mode — 1:Sample  2:Only subpath  3:StartWith+Contains  4:Contains+Contains  5:Contains OR  6:Multi-domain"
+        description: |
+          🗺️ Sitemap mode (choose a number):
+          1 → Sample — Selects URLs directly from the global sitemap (quick check; sampling applies).
+          2 → Only subpath — Include URLs that START WITH given paths. Ex: /products/ /services/
+          3 → StartWith+Contains — Must START WITH given path AND CONTAIN any keywords.
+          4 → Contains+Contains — Must CONTAIN keywords from two lists (AND logic across lists).
+          5 → Contains OR — Must CONTAIN ANY of the keywords (OR logic).
+          6 → Multi-domain — Crawl multiple domains' sitemaps and unify results.
         type: choice
         options: ["1","2","3","4","5","6"]
         default: "1"
@@ -19,19 +26,23 @@ on:
 
       # 3
       sitemapPreset:
-        description: "🧩 Sample preset (50x5, 200x10, or custom=100x10 fallback)"
+        description: |
+          🧩 Sample preset
+          Format NxG → N = total URL cap, G = per‑group cap (groups = path buckets like /products/, /careers/, /en/).
+          Examples: 50x5 ⇒ up to 50 URLs total, max 5 from each group. 200x10 ⇒ up to 200 total, max 10/group.
+          If you choose 'custom', we fallback to 100x10 here (kept simple to stay within 10-input limit).
         type: choice
         options: ["50x5","200x10","custom"]
         default: "50x5"
 
       # 4
       startWith:
-        description: "↘️ PATH starts with (OR). e.g. /en/ /services/"
+        description: "↘️ PATH starts with (OR). e.g. /en/ /services/ (Modes 2 & 3)"
         default: ""
 
       # 5
       containsAny:
-        description: "🔎 PATH contains ANY (OR). e.g. insights careers products"
+        description: "🔎 PATH contains ANY (OR). e.g. insights careers products (Modes 3 & 5)"
         default: ""
 
       # 6
@@ -77,7 +88,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo -e "\033[1;34m🔍 Validating Inputs...\033[0m"
+          BLUE="\033[1;34m"; GREEN="\033[1;32m"; RED="\033[1;31m"; YELLOW="\033[1;33m"; NC="\033[0m"
+          echo -e "${BLUE}🔍 Validating Inputs...${NC}"
 
           baseUrl="${{ github.event.inputs.baseUrl }}"
           sitemapMode="${{ github.event.inputs.sitemapMode }}"
@@ -93,18 +105,20 @@ jobs:
 
           # Required
           if [[ -z "$baseUrl" ]]; then
-            echo "❌ baseUrl is required."; exit 1;
+            echo -e "${RED}❌ Input error:${NC} baseUrl is required (e.g., https://www.example.com)"
+            exit 1
           fi
 
-          # MODE is always 1 for sitemap workflow
+          # MODE is always 1 for sitemap workflow (kept as-is)
           MODE="1"
           echo "MODE=$MODE" >> "$GITHUB_ENV"
 
-          # Sitemap preset → caps
+          # Sitemap preset → caps (kept as-is, with clear colored logs)
           case "$sitemapPreset" in
-            "50x5")  TARGET_TOTAL=50;  PER_GROUP=5  ;;
+            "50x5")   TARGET_TOTAL=50;  PER_GROUP=5  ;;
             "200x10") TARGET_TOTAL=200; PER_GROUP=10 ;;
             "custom") TARGET_TOTAL=100; PER_GROUP=10 ;;  # fallback numbers (kept simple to meet 10-input limit)
+            *) echo -e "${RED}❌ Invalid sitemapPreset:${NC} '$sitemapPreset'"; exit 1 ;;
           esac
 
           {
@@ -138,10 +152,10 @@ jobs:
             echo "EXPECTED_LOAD_TIME=3 seconds"
           } >> "$GITHUB_ENV"
 
-          echo -e "\033[1;32m✅ Inputs OK\033[0m"
-          echo "🌐 baseUrl=$baseUrl | 🗺️ mode=$sitemapMode | 🧩 preset=$sitemapPreset"
-          echo "↘️ startWith='$startWith' | 🔎 containsAny='$containsAny' | 🚫 exclude='$exclude'"
-          echo "📦 $projectName | 👤 $client | 🧑‍💼 $projectManager | 🧪 $qaManager"
+          echo -e "${GREEN}✅ Inputs OK${NC}"
+          echo -e "${YELLOW}ℹ️  Summary:${NC} 🌐 baseUrl=$baseUrl | 🗺️ mode=$sitemapMode | 🧩 preset=$sitemapPreset"
+          echo -e "   ↘️ startWith='${startWith}' | 🔎 containsAny='${containsAny}' | 🚫 exclude='${exclude}'"
+          echo -e "   📦 $projectName | 👤 $client | 🧑‍💼 $projectManager | 🧪 $qaManager"
 
       - name: 🔧 Prepare URL List (Sitemap)
         shell: bash
@@ -149,7 +163,17 @@ jobs:
           set -euo pipefail
           echo -e "\033[1;34m🔧 Building URL list from sitemap...\033[0m"
           node core/sitemapUrlBuilder.js
-          test -f "TestURL.js" && echo "✅ TestURL.js ready" || (echo "❌ TestURL.js missing" && exit 1)
+          if test -f "TestURL.js"; then
+            echo -e "\033[1;32m✅ TestURL.js ready\033[0m"
+          else
+            echo -e "\033[1;31m❌ TestURL.js missing\033[0m"
+            exit 1
+          fi
+
+      - name: ⏳ Wait 10s after URL file creation
+        run: |
+          echo -e "\033[1;33m⌛ Waiting 10 seconds to ensure file watchers/processors catch TestURL.js...\033[0m"
+          sleep 10
 
       - name: 🚀 Run Lighthouse Tests
         shell: bash
