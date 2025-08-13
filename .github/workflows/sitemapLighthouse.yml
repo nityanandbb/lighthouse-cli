@@ -71,7 +71,7 @@ jobs:
           node-version: "^18.3 || ^20.18.1"
 
       - name: 📦 Install Dependencies 
-        run:  npm install
+        run: npm install
 
       - name: 🧪 Validate Inputs & Export Env
         shell: bash
