@@ -1,15 +1,14 @@
-// analysis/ai_site_analysis.js
-// Human-readable site summary via AI, with manual fallback + status signal.
+// ai_site_analysis.js
+// Two-stage AI summarization for Lighthouse data + manual fallback.
 // Requires: npm i openai
-// Env: OPENAI_API_KEY must be set for AI path.
-// Optional env: INCLUDE_A11Y=1 to include Accessibility issues in AI JSON.
+// Env: OPENAI_API_KEY must be set.
 
 const fs = require("fs");
 const path = require("path");
 const OpenAI = require("openai");
 
-// Local modules
-const { runAnalysis } = require("./analysis");
+// Your existing local modules:
+const { runAnalysis } = require("./analysis"); // writes per_url_prioritized.json + site_common_issues.json
 const { readReports } = require("./helpers");
 
 // -----------------------------
@@ -57,7 +56,8 @@ const AI_SYSTEM_PROMPT_HUMAN = `
 You are a concise technical writer for executives and engineers.
 Given the JSON produced by the Lighthouse Site Analysis step, generate a
 human-readable report. Keep it practical, skimmable, and action-oriented.
-Return a complete <html> document with minimal CSS, no external assets.
+If HTML is requested, return a complete <html> document with minimal CSS.
+If Markdown is requested, return pure Markdown.
 Include:
 - A short "Management Summary" (chips or bullets).
 - A "Top Common Issues" table: Area | Issue | Priority | #URLs | Why it matters | How to fix | Effort.
@@ -79,15 +79,6 @@ function safeWrite(p, data) {
   );
 }
 
-function exists(p) {
-  try {
-    fs.accessSync(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function buildAnalysisDataFromLocalOutputs({
   perUrlPath = "per_url_prioritized.json",
   siteCommonPath = "site_common_issues.json",
@@ -95,6 +86,7 @@ function buildAnalysisDataFromLocalOutputs({
   const perUrl = loadJSON(perUrlPath); // map keyed by `${url}_${device}`
   const siteCommon = loadJSON(siteCommonPath); // { common_issues, generated_at, version }
 
+  // Flatten per-URL for snapshots
   const perUrlArray = Object.values(perUrl).map((u) => ({
     url: u.url,
     device: u.device,
@@ -103,14 +95,15 @@ function buildAnalysisDataFromLocalOutputs({
   }));
 
   return {
-    per_url: perUrl,
-    per_url_snapshot: perUrlArray,
+    per_url: perUrl, // full detail
+    per_url_snapshot: perUrlArray, // compact
     site_common_issues: siteCommon.common_issues,
     generated_at: new Date().toISOString(),
     version: "lh-agg-for-ai-v1",
   };
 }
 
+// Optional filter to drop a11y from the AI output (your earlier toggle)
 function filterAccessibilityFromAIJson(aiJson) {
   if (!aiJson?.common_issues) return aiJson;
   aiJson.common_issues = aiJson.common_issues.filter(
@@ -119,49 +112,24 @@ function filterAccessibilityFromAIJson(aiJson) {
   return aiJson;
 }
 
-function writeStatus(status) {
-  const out = {
-    ok: !!status.ok,
-    mode: status.mode, // "ai" | "manual"
-    reason: status.reason || null, // error or "ok"
-    generated_at: new Date().toISOString(),
-    files: status.files || [],
-  };
-  safeWrite("ai_status.json", out);
-}
-
-function injectStatusBadgeIntoHtml(html, { ok, mode }) {
-  const badgeText = ok && mode === "ai" ? "AI ✓" : "Fallback: Manual";
-  const badgeColor = ok && mode === "ai" ? "#0a7d32" : "#915400";
-  const bar = `
-  <div style="position:sticky;top:0;z-index:9999;background:${badgeColor};
-      color:#fff;padding:8px 12px;font:13px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;">
-    <strong>${badgeText}</strong>
-    <span style="opacity:.8;margin-left:8px">Report generated ${
-      ok && mode === "ai" ? "via AI" : "by manual fallback"
-    } · ${new Date().toLocaleString()}</span>
-  </div>`;
-  // Insert right after <body> (or at top)
-  if (html.includes("<body")) {
-    return html.replace(/<body[^>]*>/i, (m) => `${m}\n${bar}\n`);
-  }
-  return `${bar}\n${html}`;
-}
-
 // -----------------------------
-// AI JSON builder
+// FN #1 — AI builds JSON summary (from .lighthouseci/*.json)
 // -----------------------------
 async function aiBuildSiteSummaryJSON({
   reportsDir = ".lighthouseci",
   includeAccessibility = false,
   out = "summary_report.json",
-  openaiModel = "gpt-4.1-mini",
+  openaiModel = "gpt-4.1-mini", // pick your model id
   timeoutMs = 120000,
 } = {}) {
+  // 1) Ensure latest local analysis (manual aggregator -> machine JSON inputs)
+  //    This scans all .lighthouseci/lhr-*.json and writes per_url_prioritized.json + site_common_issues.json
   runAnalysis({ reportsDir, topPerCategory: 0 });
 
+  // 2) Shape analysisData bundle for AI
   const analysisData = buildAnalysisDataFromLocalOutputs({});
 
+  // 3) Call OpenAI with system + user payload
   const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
     timeout: timeoutMs,
@@ -183,66 +151,110 @@ async function aiBuildSiteSummaryJSON({
     throw new Error("AI JSON parse failed: " + e.message);
   }
 
-  // Validate minimal shape
-  if (!aiJson.management_summary || !Array.isArray(aiJson.management_summary)) {
-    throw new Error("AI JSON missing management_summary");
-  }
-  if (!aiJson.common_issues || !Array.isArray(aiJson.common_issues)) {
-    throw new Error("AI JSON missing common_issues");
-  }
-
+  // Optional: toggle to hide accessibility issues
   if (!includeAccessibility) aiJson = filterAccessibilityFromAIJson(aiJson);
 
+  // 4) Persist
   safeWrite(out, aiJson);
   return aiJson;
 }
 
 // -----------------------------
-// AI → Human HTML
+// FN #2 — AI renders human report (HTML or Markdown) from AI JSON
 // -----------------------------
 async function aiRenderHumanReport({
   summaryJsonPath = "summary_report.json",
-  out = "summary_report_ai.html",
+  format = "html", // "html" | "md"
+  out = format === "html" ? "summary_report_ai.html" : "summary_report_ai.md",
   openaiModel = "gpt-4.1-mini",
   timeoutMs = 120000,
 } = {}) {
   const summaryJson = loadJSON(summaryJsonPath);
+
   const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
     timeout: timeoutMs,
   });
+  const userAsk =
+    format === "html"
+      ? `Create a single self-contained HTML report (no external assets) using this JSON:\n\n${JSON.stringify(
+          summaryJson
+        )}`
+      : `Create a concise Markdown report using this JSON:\n\n${JSON.stringify(
+          summaryJson
+        )}`;
 
   const completion = await client.chat.completions.create({
     model: openaiModel,
     messages: [
       { role: "system", content: AI_SYSTEM_PROMPT_HUMAN },
-      {
-        role: "user",
-        content:
-          "Create a single self-contained HTML report (no external assets) using this JSON:\n\n" +
-          JSON.stringify(summaryJson),
-      },
+      { role: "user", content: userAsk },
     ],
   });
 
-  const html = completion.choices[0].message.content;
-  if (!html || !html.toLowerCase().includes("<html")) {
-    throw new Error("AI HTML response was not a full <html> document");
-  }
-  safeWrite(out, html);
-  return html;
+  const outText = completion.choices[0].message.content;
+  safeWrite(out, outText);
+  return outText;
 }
 
 // -----------------------------
-// Manual fallback (no AI)
+// MCP/A2A integration glue (optional)
+// -----------------------------
+/**
+ * Example MCP handler:
+ *  - trigger: "site_lighthouse_audit"
+ *  - payload: { reportsDir?: string, includeAccessibility?: boolean, humanFormat?: "html"|"md" }
+ */
+async function handleMCPEvent(event) {
+  if (event?.type !== "site_lighthouse_audit") return { status: "ignored" };
+
+  const {
+    reportsDir = ".lighthouseci",
+    includeAccessibility = false,
+    humanFormat = "html",
+  } = event.payload || {};
+
+  // A2A step-1: AI JSON
+  const json = await aiBuildSiteSummaryJSON({
+    reportsDir,
+    includeAccessibility,
+  });
+  // A2A step-2: Human-readable
+  const human = await aiRenderHumanReport({
+    summaryJsonPath: "summary_report.json",
+    format: humanFormat,
+  });
+
+  return {
+    status: "ok",
+    files: [
+      path.resolve("per_url_prioritized.json"),
+      path.resolve("site_common_issues.json"),
+      path.resolve("summary_report.json"),
+      path.resolve(
+        humanFormat === "html"
+          ? "summary_report_ai.html"
+          : "summary_report_ai.md"
+      ),
+    ],
+    preview: human.slice(0, 4000), // snippet for logs
+    counts: { common_issues: json?.common_issues?.length || 0 },
+  };
+}
+
+// -----------------------------
+// Manual (no-AI) fallback that costs ₹0 in API
+//  - Uses your existing `analysis.js` outputs and renders a clean HTML.
 // -----------------------------
 function manualHumanSummary({
   reportsDir = ".lighthouseci",
   outJson = "summary_report.json",
   outHtml = "summary_report.html",
 }) {
+  // Produce machine rollups
   runAnalysis({ reportsDir, topPerCategory: 0 });
 
+  // Build a compact, business-friendly JSON without AI
   const {
     per_url,
     per_url_snapshot,
@@ -251,6 +263,7 @@ function manualHumanSummary({
     version,
   } = buildAnalysisDataFromLocalOutputs({});
 
+  // Simple management bullets (no AI wording)
   const pages = per_url_snapshot.length;
   const avg = (k) =>
     Math.round(
@@ -299,6 +312,7 @@ function manualHumanSummary({
 
   safeWrite(outJson, summaryJson);
 
+  // Minimal readable HTML (no AI)
   const rows = summaryJson.common_issues
     .slice(0, 10)
     .map((c) => {
@@ -339,162 +353,29 @@ function manualHumanSummary({
 }
 
 // -----------------------------
-// One-shot: produce ONLY human-readable output with status
-// - Tries AI first, injects AI badge, writes summary_report_final.html
-// - If AI fails, writes manual HTML with fallback badge
-// -----------------------------
-async function generateHumanReportOnly({
-  reportsDir = ".lighthouseci",
-  includeAccessibility = false,
-  openaiModel = "gpt-4.1-mini",
-  timeoutMs = 120000,
-  finalOut = "summary_report_final.html",
-} = {}) {
-  // Always (re)build the base rollups (also filters out flags-*.json via helpers)
-  runAnalysis({ reportsDir, topPerCategory: 0 });
-
-  const wantA11y =
-    includeAccessibility ||
-    String(process.env.INCLUDE_A11Y || "").toLowerCase() === "1";
-
-  // Try AI path
-  if (process.env.OPENAI_API_KEY) {
-    try {
-      await aiBuildSiteSummaryJSON({
-        reportsDir,
-        includeAccessibility: wantA11y,
-        openaiModel,
-        timeoutMs,
-      });
-      const aiHtml = await aiRenderHumanReport({
-        summaryJsonPath: "summary_report.json",
-        out: "summary_report_ai.html",
-        openaiModel,
-        timeoutMs,
-      });
-
-      const withBadge = injectStatusBadgeIntoHtml(aiHtml, {
-        ok: true,
-        mode: "ai",
-      });
-      safeWrite(finalOut, withBadge);
-      writeStatus({
-        ok: true,
-        mode: "ai",
-        reason: "ok",
-        files: [
-          path.resolve("per_url_prioritized.json"),
-          path.resolve("site_common_issues.json"),
-          path.resolve("summary_report.json"),
-          path.resolve("summary_report_ai.html"),
-          path.resolve(finalOut),
-        ],
-      });
-      console.log("✅ AI report ready:", finalOut);
-      return;
-    } catch (err) {
-      console.error(
-        "⚠️ AI generation failed, falling back to manual:",
-        err.message
-      );
-    }
-  } else {
-    console.warn("ℹ️ OPENAI_API_KEY not set — using manual fallback.");
-  }
-
-  // Manual fallback
-  const { outHtml } = manualHumanSummary({});
-  const manualHtml = fs.readFileSync(outHtml, "utf8");
-  const withBadge = injectStatusBadgeIntoHtml(manualHtml, {
-    ok: false,
-    mode: "manual",
-  });
-  safeWrite(finalOut, withBadge);
-  writeStatus({
-    ok: false,
-    mode: "manual",
-    reason: process.env.OPENAI_API_KEY ? "ai_failed" : "no_api_key",
-    files: [
-      path.resolve("per_url_prioritized.json"),
-      path.resolve("site_common_issues.json"),
-      path.resolve("summary_report.json"),
-      path.resolve(outHtml),
-      path.resolve(finalOut),
-    ],
-  });
-  console.log("✅ Manual report ready:", finalOut);
-}
-
-// -----------------------------
-// CLI
-// node analysis/ai_site_analysis.js            # generate final HTML (AI or manual)
-// node analysis/ai_site_analysis.js manual     # force manual only
-// node analysis/ai_site_analysis.js ai         # force AI (throws if fails)
+// CLI (optional)
+// node ai_site_analysis.js ai-json        # builds AI JSON
+// node ai_site_analysis.js ai-human html  # builds AI HTML
+// node ai_site_analysis.js manual         # builds manual JSON+HTML (no AI)
 // -----------------------------
 if (require.main === module) {
   (async () => {
-    const mode = (process.argv[2] || "auto").toLowerCase();
-
-    if (mode === "manual") {
-      const { outHtml } = manualHumanSummary({});
-      const manualHtml = fs.readFileSync(outHtml, "utf8");
-      const withBadge = injectStatusBadgeIntoHtml(manualHtml, {
-        ok: false,
-        mode: "manual",
-      });
-      safeWrite("summary_report_final.html", withBadge);
-      writeStatus({
-        ok: false,
-        mode: "manual",
-        reason: "forced_manual",
-        files: [
-          path.resolve("per_url_prioritized.json"),
-          path.resolve("site_common_issues.json"),
-          path.resolve("summary_report.json"),
-          path.resolve(outHtml),
-          path.resolve("summary_report_final.html"),
-        ],
-      });
-      console.log("✅ Manual report ready: summary_report_final.html");
-      return;
+    const mode = process.argv[2] || "manual";
+    if (mode === "ai-json") {
+      await aiBuildSiteSummaryJSON({});
+      console.log("✅ Wrote summary_report.json (AI).");
+    } else if (mode === "ai-human") {
+      const format = (process.argv[3] || "html").toLowerCase();
+      await aiRenderHumanReport({ format });
+      console.log(
+        `✅ Wrote ${
+          format === "html" ? "summary_report_ai.html" : "summary_report_ai.md"
+        } (AI).`
+      );
+    } else {
+      const { outJson, outHtml } = manualHumanSummary({});
+      console.log(`✅ Wrote ${outJson} and ${outHtml} (manual, no AI).`);
     }
-
-    if (mode === "ai") {
-      if (!process.env.OPENAI_API_KEY) {
-        console.error("❌ OPENAI_API_KEY is not set.");
-        process.exit(2);
-      }
-      // Try AI only, error if it fails
-      await aiBuildSiteSummaryJSON({
-        includeAccessibility:
-          String(process.env.INCLUDE_A11Y || "").toLowerCase() === "1",
-      });
-      const aiHtml = await aiRenderHumanReport({
-        out: "summary_report_ai.html",
-      });
-      const withBadge = injectStatusBadgeIntoHtml(aiHtml, {
-        ok: true,
-        mode: "ai",
-      });
-      safeWrite("summary_report_final.html", withBadge);
-      writeStatus({
-        ok: true,
-        mode: "ai",
-        reason: "ok",
-        files: [
-          path.resolve("per_url_prioritized.json"),
-          path.resolve("site_common_issues.json"),
-          path.resolve("summary_report.json"),
-          path.resolve("summary_report_ai.html"),
-          path.resolve("summary_report_final.html"),
-        ],
-      });
-      console.log("✅ AI report ready: summary_report_final.html");
-      return;
-    }
-
-    // auto (AI → fallback)
-    await generateHumanReportOnly({});
   })().catch((e) => {
     console.error("❌ Failed:", e);
     process.exit(1);
@@ -502,5 +383,8 @@ if (require.main === module) {
 }
 
 module.exports = {
-  generateHumanReportOnly,
+  aiBuildSiteSummaryJSON,
+  aiRenderHumanReport,
+  handleMCPEvent,
+  manualHumanSummary,
 };
