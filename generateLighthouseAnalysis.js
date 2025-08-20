@@ -19,7 +19,7 @@ class LighthouseAnalyzer {
       }
 
       const files = fs.readdirSync(reportsDir);
-      const jsonFiles = files.filter(file => file.endsWith('.json'));
+      const jsonFiles = files.filter(file => file.endsWith('.json')); // exclude :report file name strts with 'flag but has .json extension...
 
       console.log(`Found ${jsonFiles.length} JSON files in ${reportsDir}`);
 

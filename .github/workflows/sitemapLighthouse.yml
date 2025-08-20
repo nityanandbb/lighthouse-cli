@@ -74,7 +74,9 @@ jobs:
     steps:
       - name: ⬇️ Checkout Code
         uses: actions/checkout@v4
-
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}   # secret injected
+          
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:

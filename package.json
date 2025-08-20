@@ -7,7 +7,19 @@
     "test": "node TestURL.js",
     "sitemap:gather": "node tools/sitemap/cli.js",
     "sample:50x5": "node tools/sitemap/cli.js --mode=sample --targetTotal=50 --perGroup=5",
-    "sample:200x10": "node tools/sitemap/cli.js --mode=sample --targetTotal=200 --perGroup=10"
+    "sample:200x10": "node tools/sitemap/cli.js --mode=sample --targetTotal=200 --perGroup=10",
+    "analysis": "node analysis/analysis.js .lighthouseci 0",
+    "analysis:top5": "node analysis/analysis.js .lighthouseci 5",
+    "analysis:summary": "node analysis/summary.js site_common_issues.json 20",
+    "analysis:full": "npm run analysis && npm run analysis:summary",
+   "analysis:ai-json": "node analysis/ai_site_analysis.js ai-json",
+    "analysis:ai-human:html": "node analysis/ai_site_analysis.js ai-human html",
+    "analysis:ai-human:md": "node analysis/ai_site_analysis.js ai-human md",
+    "analysis:manual": "node analysis/ai_site_analysis.js manual",
+     "analysis:human": "node analysis/ai_site_analysis.js",
+    "analysis:human:ai": "node analysis/ai_site_analysis.js ai",
+    "analysis:human:manual": "node analysis/ai_site_analysis.js manual"
+
   },
   "keywords": [],
   "author": "",
@@ -16,9 +28,10 @@
     "@lhci/cli": "^0.14.0"
   },
   "dependencies": {
-    "puppeteer": "^24.10.1",
     "fast-xml-parser": "^4.5.3",
+    "openai": "^5.12.2",
     "p-limit": "^2.3.0",
+    "puppeteer": "^24.10.1",
     "yargs": "^17.7.2"
   }
 }

@@ -14,10 +14,13 @@ const executeLighthouseCLI = async (urls) => {
 
     console.log("Metrics collection completed for all form factors.");
 
+    // 🔥 Run AI analysis (uses OPENAI_API_KEY from env)
+    console.log("Running AI site analysis...");
+    execSync("npm run analysis:human", { stdio: "inherit" });
+
     // Generate final HTML report
     console.log("Generating final HTML report...");
-   // execSync("node generateFinalHtml.js", { stdio: "inherit" });
-    execSync("node generateFinalHtmlReport_avg_analysis_v11.js", {
+    execSync("node generateFinalHtmlReport_avg_analysis_v13.js", {
       stdio: "inherit",
     });
 
