@@ -96,18 +96,18 @@ const generateFinalHTMLReport = (summaryData, configData, analysisData) => {
   // NEW HELPER FUNCTION: To format performance percentages with conditional styling
   const getPerformancePercentageHtml_Desktop = (score) => {
     // Adding average below :-
-      if (score >= 0.9) return "#006400"; // Dark Green - Excellent
-      if (score < 0.9) return "red"; // Dark Red - Poor
-      return "black"; // Fallback/Undefined
-    };
+    if (score >= 0.9) return "#006400"; // Dark Green - Excellent
+    if (score < 0.9) return "red"; // Dark Red - Poor
+    return "black"; // Fallback/Undefined
+  };
 
   // NEW HELPER FUNCTION: To format performance percentages with conditional styling
   const getPerformancePercentageHtml_Mobile = (score) => {
-     // Adding average below :-
-      if (score >= 0.8) return "#006400"; // Dark Green - Excellent
-      if (score < 0.8) return "red"; // Dark Red - Poor
-      return "black"; // Fallback/Undefined
-    };
+    // Adding average below :-
+    if (score >= 0.8) return "#006400"; // Dark Green - Excellent
+    if (score < 0.8) return "red"; // Dark Red - Poor
+    return "black"; // Fallback/Undefined
+  };
 
   // Group data by URL and calculate average performance and SEO separately for Desktop and Mobile
   const groupedData = summaryData.reduce((acc, entry) => {
@@ -1007,17 +1007,15 @@ async function main() {
 
   // Call the PDF generation function
   // Pass the collected data to it
- console.log(
-   " PDF ✅✅✅ 📄 Started Generating PDF 🔜 ⚡️ 📄📄📄 ✅✅✅ "
- ); 
-  await generatePdfReportFromData(logo, summaryData, configData, analysisData); // 
+  console.log(" PDF ✅✅✅ 📄 Started Generating PDF 🔜 ⚡️ 📄📄📄 ✅✅✅ ");
+  await generatePdfReportFromData(logo, summaryData, configData, analysisData); //
 
   console.log(
     " ✅✅✅ 📄 PDF Enhanced Lighthouse PDF  report generation completed! 📄📄📄 ✅✅✅"
-  ); 
+  );
 }
 
 // Call the async main function
-main().catch(error => {
-    console.error("An error occurred during report generation:", error);
+main().catch((error) => {
+  console.error("An error occurred during report generation:", error);
 });
