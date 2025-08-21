@@ -211,7 +211,7 @@ jobs:
       - name: ⏳ Wait for Reports
         run: |
           echo -e "⌛ Sleeping 40s to allow report generation..."
-          sleep 40
+          sleep 300
 
       - name: 📂 Move Reports to Reports_QA
         run: |
