@@ -1,0 +1,264 @@
+name: "⛳️ 🗺️ 🚀 Sitemap Lighthouse (Sitemap-only)"
+
+on:
+  workflow_dispatch:
+    inputs:
+      # 1
+      baseUrl:
+        description: "🌐 Base URL (required). Example: https://www.example.com"
+        default: ""
+        required: true
+
+      # 2  (descriptive labels; we parse the leading number at runtime)
+      sitemapMode:
+        description: "🗺️ Choose sitemap mode"
+        type: choice
+        options:
+          - "1 — Sample (global sitemap) — e.g. auto-pick from /sitemap.xml, preset 20x2"
+          - "2 — Only subpath (starts with) — e.g. /services/ /products/"
+          - "3 — StartWith + Contains — e.g. start: /en/  contains: careers insights"
+          - "4 — Contains + Contains — e.g. contains: products  AND contains: pricing"
+          - "5 — Contains OR — e.g. contains any: blog careers jobs"
+          - "6 — Multi-domain — e.g. example.com site2.com"
+        default: "1 — Sample (global sitemap) — e.g. auto-pick from /sitemap.xml, preset 20x2"
+        required: true
+
+      # 3  (NxG where N=URLs per group, G=#groups cap)
+      sitemapPreset:
+        description: |
+          🧩 Sample preset — NxG (N = URLs per group, G = #groups cap).
+          Example: 30x2 ⇒ take up to 30 from each of 2 groups ⇒ ~60 total.
+        type: choice
+        options: ["30x1","50x1","100x2","200x4","500x5","1000x10","custom"]
+        default: "custom"
+        required: true
+
+      # 4  (shown regardless; GitHub can't conditionally show)
+      customSample:
+        description: "✍️ If preset = 'custom': enter NxG (e.g., 75x5). N=per group, G=#groups."
+        default: "20x2"
+        required: false
+
+      # 5
+      startWith:
+        description: "↘️ PATH starts with (OR). e.g. /en/ /services/ (Modes 2 & 3)"
+        default: ""
+
+      # 6
+      containsAny:
+        description: "🔎 PATH contains ANY (OR). e.g. insights careers products (Modes 3 & 5)"
+        default: ""
+
+      # ---- Project meta (keep within 10-input cap) ----
+      # 7
+      projectName:
+        description: "📦 Project Name"
+        default: "Internal"
+      # 8
+      client:
+        description: "👤 Client Name"
+        default: "Internal"
+      # 9
+      projectManager:
+        description: "🧑‍💼 Project Manager"
+        default: "Kunal"
+      # 10
+      qaManager:
+        description: "🧪 QA Manager"
+        default: "Archana"
+
+jobs:
+  sitemap-run:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: ⬇️ Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "^18.3 || ^20.18.1"
+
+      - name: 📦 Install Dependencies
+        run: npm install
+
+      - name: 🧪 Validate Inputs & Export Env
+        shell: bash
+        run: |
+          set -euo pipefail
+          BLUE="\033[1;34m"; GREEN="\033[1;32m"; RED="\033[1;31m"; YELLOW="\033[1;33m"; NC="\033[0m"
+          echo -e "${BLUE}🔍 Validating Inputs...${NC}"
+          baseUrl="${{ github.event.inputs.baseUrl }}"
+          sitemapMode="${{ github.event.inputs.sitemapMode }}"
+          sitemapPreset="${{ github.event.inputs.sitemapPreset }}"
+          customSample="${{ github.event.inputs.customSample }}"
+          startWith="${{ github.event.inputs.startWith }}"
+          containsAny="${{ github.event.inputs.containsAny }}"
+          projectName="${{ github.event.inputs.projectName }}"
+          client="${{ github.event.inputs.client }}"
+          projectManager="${{ github.event.inputs.projectManager }}"
+          qaManager="${{ github.event.inputs.qaManager }}"
+
+          if [[ -z "$baseUrl" ]]; then
+            echo -e "${RED}❌ Input error:${NC} baseUrl is required (e.g., https://www.example.com)"
+            exit 1
+          fi
+
+          MODE_NUM=""
+          if [[ "$sitemapMode" =~ ^[[:space:]]*([0-9]+) ]]; then
+            MODE_NUM="${BASH_REMATCH[1]}"
+          else
+            echo -e "${RED}❌ Input error:${NC} sitemapMode must start with a number 1..6"
+            exit 1
+          fi
+
+          # For USERS in CI we run the flexible builder with MODE=1 (sitemap)
+          MODE="1"
+
+          SAMPLE_STR="$sitemapPreset"
+          if [[ "$sitemapPreset" == "custom" ]]; then
+            SAMPLE_STR="$customSample"
+          fi
+          if [[ ! "$SAMPLE_STR" =~ ^[[:space:]]*[0-9]+[[:space:]]*[xX][[:space:]]*[0-9]+[[:space:]]*$ ]]; then
+            echo -e "${RED}❌ Invalid NxG format:${NC} '$SAMPLE_STR'  Use e.g., 20x2"
+            exit 1
+          fi
+          NORM="$(echo "$SAMPLE_STR" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
+          MAX_PER_GROUP="${NORM%x*}"
+          MAX_GROUPS="${NORM#*x}"
+          if (( MAX_PER_GROUP < 1 || MAX_GROUPS < 1 )); then
+            echo -e "${RED}❌ NxG numbers must be >= 1${NC}"
+            exit 1
+          fi
+          MAX_TOTAL=$(( MAX_PER_GROUP * MAX_GROUPS ))
+
+          {
+            # Common env for both builders and downstream scripts
+            echo "BASE_URL=$baseUrl"
+            echo "SITEMAP_MODE_LABEL=$sitemapMode"
+            echo "SITEMAP_MODE_NUM=$MODE_NUM"
+            echo "MODE=$MODE"                 # 👈 used by githubTestUrlBuilder.js
+            echo "SITEMAP_PRESET=$sitemapPreset"
+            echo "CUSTOM_SAMPLE=$customSample"
+            echo "MAX_PER_GROUP=$MAX_PER_GROUP"
+            echo "MAX_GROUPS=$MAX_GROUPS"
+            echo "MAX_TOTAL=$MAX_TOTAL"
+            echo "START_WITH=$startWith"
+            echo "CONTAINS_ANY=$containsAny"
+            echo "CONTAINS_ALL="
+            echo "INCLUDE_RE="
+            echo "EXCLUDE_RE="
+            echo "ALLOW_SUBDOMAINS=false"
+            echo "ALLOW_HOSTS="
+            echo "HOST_RE="
+            echo "SKIP_VALIDATE=false"
+            echo "CONCURRENCY=8"
+            echo "MAX_SITEMAPS=1000"
+            echo "PROJECT_NAME=$projectName"
+            echo "CLIENT=$client"
+            echo "PROJECT_MANAGER=$projectManager"
+            echo "QA_MANAGER=$qaManager"
+            echo "EXPECTED_LOAD_TIME=3 seconds"
+          } >> "$GITHUB_ENV"
+
+          echo -e "${GREEN}✅ Inputs OK${NC}"
+          echo -e "${YELLOW}ℹ️ Summary:${NC} 🌐 baseUrl=$baseUrl | 🗺️ mode='$sitemapMode' (num=$MODE_NUM)"
+          echo -e "   🧩 preset=$sitemapPreset → ${MAX_PER_GROUP}/group × ${MAX_GROUPS} groups ≈ cap ${MAX_TOTAL}"
+          echo -e "   ↘️ startWith='${startWith}' | 🔎 containsAny='${containsAny}'"
+
+      - name: 🔧 Prepare URL List (Flexible builder via githubTestUrlBuilder)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo -e "\033[1;34m🔧 Building URL list with githubTestUrlBuilder (MODE=$MODE)...\033[0m"
+          node core/githubTestUrlBuilder.js
+          echo -e "\n\033[1;34m📁 After githubTestUrlBuilder.js:\033[0m"
+          pwd
+          ls -la
+          if test -f "TestURL.js"; then
+            echo -e "\033[1;32m✅ TestURL.js ready\033[0m"
+            echo -e "First 20 lines of TestURL.js:"
+            head -n 20 TestURL.js || true
+          else
+            echo -e "\033[1;33m⚠️ TestURL.js not found. If your testUrlBuilder writes elsewhere, ensure runLighthouseAuto.js reads it.\033[0m"
+          fi
+
+      - name: ⏳ Wait 10s after URL file creation
+        run: |
+          echo -e "\033[1;33m⌛ Waiting 10 seconds...\033[0m"
+          sleep 10
+
+      - name: 🚀 Run Lighthouse Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo -e "\033[1;36m📡 Starting Lighthouse...\033[0m"
+          node runLighthouseAuto.js
+          echo -e "\033[1;32m✅ Lighthouse complete.\033[0m"
+
+      - name: 🔎 Inspect workspace (post-Lighthouse)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo -e "\n\033[1;34m📂 Tree (depth 2):\033[0m"
+          find . -maxdepth 2 -type d -print
+          echo -e "\n\033[1;34m📄 Files (top-level):\033[0m"
+          ls -la
+          echo -e "\n\033[1;34m.lighthouseci listing:\033[0m"
+          if [[ -d ".lighthouseci" ]]; then
+            ls -la .lighthouseci || true
+            echo "JSON count in .lighthouseci:"
+            find .lighthouseci -maxdepth 1 -type f -name "*.json" | wc -l || true
+          else
+            echo "⚠️  .lighthouseci directory does not exist"
+          fi
+
+      - name: ⏳ Wait for Reports
+        run: |
+          echo -e "⌛ Sleeping 30s to allow report generation flush..."
+          sleep 30
+
+      - name: 📂 Move Reports to Reports_QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          mkdir -p ./Reports_QA
+          mv ./*.html ./Reports_QA/ 2>/dev/null || true
+          mv ./*.pdf  ./Reports_QA/ 2>/dev/null || true
+          if [[ -d "./results" ]]; then
+            mv ./results/*.csv ./Reports_QA/ 2>/dev/null || true
+          fi
+          echo -e "\033[1;34m📦 Reports_QA contents:\033[0m"
+          ls -la ./Reports_QA || true
+          echo -e "File count in Reports_QA:"
+          find ./Reports_QA -type f | wc -l || true
+
+      - name: 🧾 Explain why artifacts might be empty
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::Diagnostics"
+          echo "Does Reports_QA exist?"
+          [[ -d "./Reports_QA" ]] && echo "✅ yes" || echo "❌ no"
+          echo "Top-level files now:"
+          ls -1 || true
+          echo "Reports_QA files:"
+          find ./Reports_QA -type f -maxdepth 1 -printf "%f\n" 2>/dev/null || true
+          echo "::endgroup::"
+
+      - name: 📤 Upload Reports as Artifact (Reports_QA only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sitemap-lighthouse-reports
+          path: ./Reports_QA/*
+          if-no-files-found: error
+          retention-days: 14
+
+      # 🧹 No second artifact upload (./.lighthouseci/*) per your note
