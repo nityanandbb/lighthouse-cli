@@ -1,4 +1,4 @@
-name: "⛳️ 🗺️ 🚀 Sitemap Lighthouse (Sitemap-only)"
+name: "⛳️ 🗺️ 🚀 Test Sitemap-only)"
 
 on:
   workflow_dispatch:
@@ -35,7 +35,7 @@ on:
 
       # 4  (shown regardless; GitHub can't conditionally show)
       customSample:
-        description: "✍️ If preset = 'custom': enter NxG (e.g., 75x5). N=per group, G=#groups."
+        description: "✍️ If preset = 'custom': enter NxG (e.g., 20x2). N=per group, G=#groups."
         default: "20x2"
         required: false
 
@@ -46,7 +46,7 @@ on:
 
       # 6
       containsAny:
-        description: "🔎 PATH contains ANY (OR). e.g. insights careers products (Modes 3 & 5)"
+        description: "🔎 PATH contains terms (space/comma-separated). Modes 3,4,5; Mode 6 = host list"
         default: ""
 
       # ---- Project meta (keep within 10-input cap) ----
@@ -93,6 +93,7 @@ jobs:
           set -euo pipefail
           BLUE="\033[1;34m"; GREEN="\033[1;32m"; RED="\033[1;31m"; YELLOW="\033[1;33m"; NC="\033[0m"
           echo -e "${BLUE}🔍 Validating Inputs...${NC}"
+
           baseUrl="${{ github.event.inputs.baseUrl }}"
           sitemapMode="${{ github.event.inputs.sitemapMode }}"
           sitemapPreset="${{ github.event.inputs.sitemapPreset }}"
@@ -109,6 +110,7 @@ jobs:
             exit 1
           fi
 
+          # Parse leading number from sitemapMode (1..6)
           MODE_NUM=""
           if [[ "$sitemapMode" =~ ^[[:space:]]*([0-9]+) ]]; then
             MODE_NUM="${BASH_REMATCH[1]}"
@@ -117,9 +119,7 @@ jobs:
             exit 1
           fi
 
-          # For USERS in CI we run the flexible builder with MODE=1 (sitemap)
-          MODE="1"
-
+          # NxG -> PER_GROUP (N) & GROUPS (G)
           SAMPLE_STR="$sitemapPreset"
           if [[ "$sitemapPreset" == "custom" ]]; then
             SAMPLE_STR="$customSample"
@@ -129,36 +129,100 @@ jobs:
             exit 1
           fi
           NORM="$(echo "$SAMPLE_STR" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
-          MAX_PER_GROUP="${NORM%x*}"
-          MAX_GROUPS="${NORM#*x}"
-          if (( MAX_PER_GROUP < 1 || MAX_GROUPS < 1 )); then
+          PER_GROUP="${NORM%x*}"
+          GROUPS_CAP="${NORM#*x}"
+          if (( PER_GROUP < 1 || GROUPS_CAP < 1 )); then
             echo -e "${RED}❌ NxG numbers must be >= 1${NC}"
             exit 1
           fi
-          MAX_TOTAL=$(( MAX_PER_GROUP * MAX_GROUPS ))
+          TARGET_TOTAL=$(( PER_GROUP * GROUPS_CAP ))
+
+          # Normalize lists (space/comma/newline separated)
+          normalize_list () { echo "$1" | tr ',\n' '  ' | xargs -n1 echo | sed '/^$/d' | xargs; }
+          startWithN="$(normalize_list "$startWith")"
+          containsAnyN="$(normalize_list "$containsAny")"
+
+          # Reset all filter/envs to empty to avoid leakage between runs
+          START_WITH=""
+          CONTAINS_ANY=""
+          CONTAINS_ALL=""
+          EXCLUDE=""
+          INCLUDE_RE=""
+          EXCLUDE_RE=""
+          MATCH_QUERY="false"
+          ALLOW_SUBDOMAINS="false"
+          ALLOW_HOSTS=""
+          HOST_RE=""
+          OUT_FILE="TestURL.js"
+          CONCURRENCY="8"
+          MAX_SITEMAPS="1000"
+          SKIP_VALIDATE="false"
+
+          # Map Mode → filters used by core/sitemapUrlBuilder.js
+          case "$MODE_NUM" in
+            1)
+              # Sample (global) — no path filters
+              ;;
+            2)
+              # Only subpath (starts with)
+              START_WITH="$startWithN"
+              ;;
+            3)
+              # StartWith + Contains (AND)
+              START_WITH="$startWithN"
+              CONTAINS_ANY="$containsAnyN"
+              ;;
+            4)
+              # Contains + Contains (AND across all tokens)
+              # Interpret provided terms as ALL must match
+              CONTAINS_ALL="$containsAnyN"
+              ;;
+            5)
+              # Contains OR (ANY)
+              CONTAINS_ANY="$containsAnyN"
+              ;;
+            6)
+              # Multi-domain: interpret containsAny as host list (space/comma-separated)
+              # BASE_URL is still required; crawl can expand as allowed hosts
+              ALLOW_SUBDOMAINS="true"
+              ALLOW_HOSTS="$containsAnyN"
+              ;;
+            *)
+              echo -e "${YELLOW}⚠️ Unknown mode '$MODE_NUM'; defaulting to Mode 1 (sample).${NC}"
+              ;;
+          esac
 
           {
-            # Common env for both builders and downstream scripts
+            echo "MODE=1"                               # 👈 ensure sitemapUrlBuilder runs
+            echo "SITEMAP_MODE_NUM=$MODE_NUM"           # for logging/diagnostics if needed
             echo "BASE_URL=$baseUrl"
-            echo "SITEMAP_MODE_LABEL=$sitemapMode"
-            echo "SITEMAP_MODE_NUM=$MODE_NUM"
-            echo "MODE=$MODE"                 # 👈 used by githubTestUrlBuilder.js
-            echo "SITEMAP_PRESET=$sitemapPreset"
-            echo "CUSTOM_SAMPLE=$customSample"
-            echo "MAX_PER_GROUP=$MAX_PER_GROUP"
-            echo "MAX_GROUPS=$MAX_GROUPS"
-            echo "MAX_TOTAL=$MAX_TOTAL"
-            echo "START_WITH=$startWith"
-            echo "CONTAINS_ANY=$containsAny"
-            echo "CONTAINS_ALL="
-            echo "INCLUDE_RE="
-            echo "EXCLUDE_RE="
-            echo "ALLOW_SUBDOMAINS=false"
-            echo "ALLOW_HOSTS="
-            echo "HOST_RE="
-            echo "SKIP_VALIDATE=false"
-            echo "CONCURRENCY=8"
-            echo "MAX_SITEMAPS=1000"
+            echo "OUT_FILE=$OUT_FILE"
+
+            # Sampling knobs
+            echo "SITEMAP_PRESET=$sitemapPreset"        # script may still read it
+            echo "TARGET_TOTAL=$TARGET_TOTAL"           # used by sitemapUrlBuilder
+            echo "PER_GROUP=$PER_GROUP"                 # used by sitemapUrlBuilder
+
+            # Filters
+            echo "START_WITH=$START_WITH"
+            echo "CONTAINS_ANY=$CONTAINS_ANY"
+            echo "CONTAINS_ALL=$CONTAINS_ALL"
+            echo "EXCLUDE=$EXCLUDE"
+            echo "INCLUDE_RE=$INCLUDE_RE"
+            echo "EXCLUDE_RE=$EXCLUDE_RE"
+            echo "MATCH_QUERY=$MATCH_QUERY"
+
+            # Host rules
+            echo "ALLOW_SUBDOMAINS=$ALLOW_SUBDOMAINS"
+            echo "ALLOW_HOSTS=$ALLOW_HOSTS"
+            echo "HOST_RE=$HOST_RE"
+
+            # Perf
+            echo "CONCURRENCY=$CONCURRENCY"
+            echo "MAX_SITEMAPS=$MAX_SITEMAPS"
+            echo "SKIP_VALIDATE=$SKIP_VALIDATE"
+
+            # Project meta (downstream report)
             echo "PROJECT_NAME=$projectName"
             echo "CLIENT=$client"
             echo "PROJECT_MANAGER=$projectManager"
@@ -168,16 +232,16 @@ jobs:
 
           echo -e "${GREEN}✅ Inputs OK${NC}"
           echo -e "${YELLOW}ℹ️ Summary:${NC} 🌐 baseUrl=$baseUrl | 🗺️ mode='$sitemapMode' (num=$MODE_NUM)"
-          echo -e "   🧩 preset=$sitemapPreset → ${MAX_PER_GROUP}/group × ${MAX_GROUPS} groups ≈ cap ${MAX_TOTAL}"
-          echo -e "   ↘️ startWith='${startWith}' | 🔎 containsAny='${containsAny}'"
+          echo -e "   🧩 sample=$SAMPLE_STR → perGroup=$PER_GROUP × groups=$GROUPS_CAP ⇒ targetTotal≈$TARGET_TOTAL"
+          echo -e "   ↘️ startWith='$startWithN' | 🔎 terms='$containsAnyN'"
 
-      - name: 🔧 Prepare URL List (Flexible builder via githubTestUrlBuilder)
+      - name: 🔧 Prepare URL List (Sitemap)
         shell: bash
         run: |
           set -euo pipefail
-          echo -e "\033[1;34m🔧 Building URL list with githubTestUrlBuilder (MODE=$MODE)...\033[0m"
-          node core/githubTestUrlBuilder.js
-          echo -e "\n\033[1;34m📁 After githubTestUrlBuilder.js:\033[0m"
+          echo -e "\033[1;34m🔧 Building URL list from sitemap (MODE_NUM=$SITEMAP_MODE_NUM)...\033[0m"
+          node core/sitemapUrlBuilder.js
+          echo -e "\n\033[1;34m📁 After sitemapUrlBuilder.js:\033[0m"
           pwd
           ls -la
           if test -f "TestURL.js"; then
@@ -185,7 +249,8 @@ jobs:
             echo -e "First 20 lines of TestURL.js:"
             head -n 20 TestURL.js || true
           else
-            echo -e "\033[1;33m⚠️ TestURL.js not found. If your testUrlBuilder writes elsewhere, ensure runLighthouseAuto.js reads it.\033[0m"
+            echo -e "\033[1;31m❌ TestURL.js missing\033[0m"
+            exit 1
           fi
 
       - name: ⏳ Wait 10s after URL file creation
@@ -221,7 +286,7 @@ jobs:
       - name: ⏳ Wait for Reports
         run: |
           echo -e "⌛ Sleeping 30s to allow report generation flush..."
-          sleep 30
+          sleep 300
 
       - name: 📂 Move Reports to Reports_QA
         shell: bash
@@ -260,5 +325,3 @@ jobs:
           path: ./Reports_QA/*
           if-no-files-found: error
           retention-days: 14
-
-      # 🧹 No second artifact upload (./.lighthouseci/*) per your note
