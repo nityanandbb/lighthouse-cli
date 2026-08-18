@@ -1,5 +1,5 @@
 const fs = require("fs");
-const { execSync } = require("child_process");
+const { execSync, execFileSync } = require("child_process");
 const path = require("path");
 
 async function getLighthousePerformance(urls, formFactor) {
@@ -64,10 +64,31 @@ async function getLighthousePerformance(urls, formFactor) {
       }
 
       // Run Lighthouse collection for the current URL
+      /*
       execSync(
         `npx lhci collect --additive --url="${url}" --emulatedFormFactor=${formFactor} --preset=${formFactor} --outputDir=${reportPath}`,
         { stdio: "inherit" }
       );
+      */
+      
+      const lighthouseArgs = [
+        "lhci",
+        "collect",
+        "--additive",
+        `--url=${url}`,
+        `--emulatedFormFactor=${formFactor}`,
+        `--preset=${formFactor}`,
+        `--outputDir=${reportPath}`,
+        "--config=./lighthouse-runtime-config.cjs",
+      ];
+
+      execFileSync("npx", lighthouseArgs, {
+        stdio: "inherit",
+        env: process.env,
+        shell: false,
+        timeout: 300000,
+      });
+      
       console.log(`Lighthouse collection completed for ${url}`);
 
       // Process the collected data (e.g., extract performance metrics, etc.)

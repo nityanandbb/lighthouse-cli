@@ -218,3 +218,13 @@ This system integrates seamlessly with your existing Lighthouse CI workflow:
 4. Final HTML report includes both summary and detailed analysis
 
 No changes needed to your existing Lighthouse CI configuration!
+
+
+
+export SHIELD_ENABLED=true
+export SHIELD_USERNAME="your_username"
+export SHIELD_PASSWORD="your_password"
+export LH_IGNORE_CERT_ERRORS=true
+export LH_NO_SANDBOX=false
+
+node executeGithub.js
