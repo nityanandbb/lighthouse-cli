@@ -1,6 +1,6 @@
 // execution.js
 const { getLighthousePerformance } = require("./lighthouse-collection");
-const { execSync } = require("child_process");
+const { execSync, execFileSync } = require("child_process");
 
 const executeLighthouseCLI = async (urls) => {
   try {

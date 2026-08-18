@@ -27,6 +27,30 @@ on:
         description: "With Blank space separated list of URLs (e.g., url1.com url2.com url2.com )"
         required: true
 
+      shieldEnabled:
+        description: "Enable Shield credentials"
+        required: false
+        default: false
+        type: boolean
+
+      shieldUsername:
+        description: "Shield Username"
+        required: false
+        default: ""
+        type: string
+
+      shieldPassword:
+        description: "Shield Password"
+        required: false
+        default: ""
+        type: string
+
+      ignoreCertificateErrors:
+        description: "Proceed past invalid HTTPS certificate warning"
+        required: false
+        default: false
+        type: boolean
+
 jobs:
   setup-and-execute:
     runs-on: ubuntu-22.04
@@ -46,11 +70,50 @@ jobs:
     - name: Install Lighthouse CLI
       run: npm install
 
-    # Step 4: Validate Inputs and Prepare Environment 
+    # Step 4: Validate Inputs and Prepare Environment
     - name: Validate Inputs here
+      env:
+        INPUT_SHIELD_ENABLED: ${{ inputs.shieldEnabled }}
+        INPUT_SHIELD_USERNAME: ${{ inputs.shieldUsername }}
+        INPUT_SHIELD_PASSWORD: ${{ inputs.shieldPassword }}
+        INPUT_IGNORE_CERT_ERRORS: ${{ inputs.ignoreCertificateErrors }}
       run: |
         echo -e "🟢 Validating inputs..."
-        
+
+        # Prepare optional Shield configuration
+        SHIELD_ENABLED="${INPUT_SHIELD_ENABLED:-false}"
+        LH_IGNORE_CERT_ERRORS="${INPUT_IGNORE_CERT_ERRORS:-false}"
+
+        if [[ "$SHIELD_ENABLED" == "true" ]]; then
+          if [[ -z "$INPUT_SHIELD_USERNAME" || -z "$INPUT_SHIELD_PASSWORD" ]]; then
+            echo -e "❌ Shield is enabled, but Shield username or password is missing."
+            exit 1
+          fi
+
+          # Mask credentials in all subsequent GitHub Actions logs
+          echo "::add-mask::$INPUT_SHIELD_USERNAME"
+          echo "::add-mask::$INPUT_SHIELD_PASSWORD"
+
+          echo -e "🔐 Shield authentication : enabled"
+          echo -e "👤 SHIELD_USERNAME : ***"
+          echo -e "🔑 SHIELD_PASSWORD : ***"
+        else
+          echo -e "🔓 Shield authentication : disabled"
+        fi
+
+        if [[ "$LH_IGNORE_CERT_ERRORS" == "true" ]]; then
+          echo -e "⚠️ Invalid HTTPS certificate bypass : enabled"
+        else
+          echo -e "🔒 Invalid HTTPS certificate bypass : disabled"
+        fi
+
+        # Export Shield and HTTPS options for Node.js and Lighthouse
+        echo "SHIELD_ENABLED=$SHIELD_ENABLED" >> "$GITHUB_ENV"
+        echo "SHIELD_USERNAME=$INPUT_SHIELD_USERNAME" >> "$GITHUB_ENV"
+        echo "SHIELD_PASSWORD=$INPUT_SHIELD_PASSWORD" >> "$GITHUB_ENV"
+        echo "LH_IGNORE_CERT_ERRORS=$LH_IGNORE_CERT_ERRORS" >> "$GITHUB_ENV"
+        echo "LH_NO_SANDBOX=true" >> "$GITHUB_ENV"
+
         # Validate and sanitize URLs
         if [ -z "${{ github.event.inputs.urls }}" ]; then
           echo -e "❌ No URLs provided. Please provide valid URLs to proceed."
@@ -59,7 +122,7 @@ jobs:
 
         # Split URLs and sanitize by trimming spaces and quotes
         urls=$(echo "${{ github.event.inputs.urls }}" | tr ',' '\n' | sed 's/^ *//g; s/ *$//g; s/^["\(]*//g; s/["\)]*$//g')
-        
+
         # Validate URL format
         valid_urls=()
         for url in $urls; do
@@ -76,7 +139,7 @@ jobs:
 
         # 🏃🏼‍♂️Export individual GitHub inputs as environment variables 🏃🏼‍♂️
 
-        # Log inputs with emojis 
+        # Log inputs with emojis
         echo -e "📦 PROJECT_NAME : ${{ github.event.inputs.projectName }}"
         echo -e "👤 CLIENT : ${{ github.event.inputs.client }}"
         echo -e "🧑‍💼 PROJECT_MANAGER : ${{ github.event.inputs.projectManager }}"
@@ -84,32 +147,41 @@ jobs:
         echo -e "⏱️ EXPECTED_LOAD_TIME : ${{ github.event.inputs.expectedLoadTime }}"
         echo -e "🔗 TESTFILES_LIST : ${valid_urls[*]}"
 
-        # Export environment variables 
+        # Export environment variables
         echo "PROJECT_NAME=${{ github.event.inputs.projectName }}" >> $GITHUB_ENV
         echo "CLIENT=${{ github.event.inputs.client }}" >> $GITHUB_ENV
         echo "PROJECT_MANAGER=${{ github.event.inputs.projectManager }}" >> $GITHUB_ENV
         echo "QA_MANAGER=${{ github.event.inputs.qaManager }}" >> $GITHUB_ENV
         echo "EXPECTED_LOAD_TIME=${{ github.event.inputs.expectedLoadTime }}" >> $GITHUB_ENV
-        echo "TESTFILES_LIST=${valid_urls[*]}" >> $GITHUB_ENV 
-
-
-        # Export URLs as a list 
         echo "TESTFILES_LIST=${valid_urls[*]}" >> $GITHUB_ENV
 
-    # Step 5: Start Lighthouse Execution 
+        # Export URLs as a list
+        echo "TESTFILES_LIST=${valid_urls[*]}" >> $GITHUB_ENV
+
+    # Step 5: Start Lighthouse Execution
     - name: Execute Lighthouse Tests
       run: |
         echo -e "🚀 Starting Lighthouse tests..."
- 
+
+        if [[ "$SHIELD_ENABLED" == "true" ]]; then
+          echo -e "🔐 Using Shield credentials : *** / ***"
+        else
+          echo -e "🔓 Running without Shield credentials"
+        fi
+
+        if [[ "$LH_IGNORE_CERT_ERRORS" == "true" ]]; then
+          echo -e "⚠️ Invalid HTTPS certificate warning will be bypassed"
+        fi
+
         # Convert test URLs list into an array
         IFS=' ' read -r -a testList <<< "$TESTFILES_LIST"
-        
+
         # Log each URL being processed
         echo -e "🔍 URLs to be tested:"
         for test in "${testList[@]}"; do
           echo -e "  - $test"
         done
-        
+
         # Pass URLs to the Node.js script
         node executeGithub.js
         echo -e "✅ Lighthouse tests completed."
