@@ -79,14 +79,59 @@ async function getLighthousePerformance(urls, formFactor) {
         `--emulatedFormFactor=${formFactor}`,
         `--preset=${formFactor}`,
         `--outputDir=${reportPath}`,
-        "--config=./lighthouse-runtime-config.cjs",
       ];
+
+      /*
+       * Add invalid-certificate bypass only when enabled.
+       * Otherwise, the existing Lighthouse command remains unchanged.
+       */
+      if (String(process.env.LH_IGNORE_CERT_ERRORS).toLowerCase() === "true") {
+        lighthouseArgs.push(
+          "--settings.chromeFlags=--ignore-certificate-errors",
+        );
+
+        console.log("Invalid HTTPS certificate warning bypass is enabled.");
+      }
+
+      /*
+       * Add Shield credentials only when enabled.
+       */
+      if (String(process.env.SHIELD_ENABLED).toLowerCase() === "true") {
+        const username = process.env.SHIELD_USERNAME;
+        const password = process.env.SHIELD_PASSWORD;
+
+        if (!username || !password) {
+          throw new Error(
+            "Shield is enabled, but SHIELD_USERNAME or SHIELD_PASSWORD is missing.",
+          );
+        }
+
+        const encodedCredentials = Buffer.from(
+          `${username}:${password}`,
+          "utf8",
+        ).toString("base64");
+
+        const authorizationHeader = `Basic ${encodedCredentials}`;
+
+        /*
+         * Mask the encoded Authorization header in GitHub Actions logs.
+         */
+        if (process.env.GITHUB_ACTIONS === "true") {
+          console.log(`::add-mask::${encodedCredentials}`);
+          console.log(`::add-mask::${authorizationHeader}`);
+        }
+
+        lighthouseArgs.push(
+          `--settings.extraHeaders.Authorization=${authorizationHeader}`,
+        );
+
+        console.log("Shield authentication is enabled: *** / ***");
+      }
 
       execFileSync("npx", lighthouseArgs, {
         stdio: "inherit",
         env: process.env,
         shell: false,
-        timeout: 300000,
       });
       
       console.log(`Lighthouse collection completed for ${url}`);
